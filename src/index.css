@@ -1,0 +1,18 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes:
+  cupcake
+};
+
+@theme {
+  --color-digital-blue: #1F73E6;
+  --color-digital-red: #800020;
+  --color-red-light:#920024;
+  --color-personal-blue: #2D84CF; 
+  --color-light-blue: #4c97d8;
+  --color-background-sdmaa: #FAF7F5;
+}
+
+body{
+  background-color: #FAF7F5;
+}
