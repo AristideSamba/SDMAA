@@ -1,0 +1,13 @@
+# Front
+sdmaa_front/node_modules
+sdmaa_front/dist
+
+# Back
+sdmaa_back_one/target
+
+# IntelliJ
+.idea
+*.iml
+
+# Env
+.env
