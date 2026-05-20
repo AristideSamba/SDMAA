@@ -4,14 +4,14 @@ function HistoriqueClub() {
   return (
     <section className="py-16 px-4 sm:px-10 max-w-7xl mx-auto">
 
-      <div className="grid md:grid-cols-2 gap-10 items-center">
+      <div className="grid md:grid-cols-2 gap-10 h-[400px]">
 
         {/* Image */}
-        <div className="overflow-hidden rounded-xl shadow-lg">
+        <div className="overflow-hidden h-auto shadow-lg">
           <img
             src={dojo}
             alt="Dojo du club"
-            className="w-full h-full object-cover hover:scale-105 transition duration-500"
+            className="w-auto h-auto object-cover transition duration-500"
           />
         </div>
 

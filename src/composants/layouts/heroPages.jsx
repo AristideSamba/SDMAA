@@ -1,34 +1,64 @@
-import { section } from "motion/react-client";
+function HeroPages({ titre, intro, image }) {
+  return (
+    <section className="relative h-[70vh] overflow-hidden text-white">
+      
+      {/* Image de fond */}
+      <img
+        src={image}
+        alt="Pratiquants de Taekwondo en entraînement"
+        className="absolute inset-0 w-full h-full object-cover"
+      />
 
-function HeroPages({titre, intro, image}){
-  return(
-    <section className="w-full h-[50vh] flex flex-col md:flex-row overflow-hidden">
-      {/* Left Column - Info + Radial Gradient */}
-      <div className="md:w-1/2 w-full h-1/2 md:h-full flex flex-col justify-center px-8 md:px-16 py-12
-                      bg-[radial-gradient(circle_at_top_left,_#800020,_#4d0015)] text-white">
+      {/* Dégradé prononcé depuis la gauche */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: `
+            linear-gradient(
+              to right,
+              rgba(0, 0, 0, 0.90) 0%,
+              rgba(0, 0, 0, 0.75) 20%,
+              rgba(0, 0, 0, 0.50) 40%,
+              rgba(0, 0, 0, 0.25) 60%,
+              rgba(0, 0, 0, 0.08) 75%,
+              rgba(0, 0, 0, 0) 100%
+            )
+          `,
+        }}
+      />
+
+      {/* Renfort subtil autour du texte */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: `
+            radial-gradient(
+              circle at 20% 50%,
+              rgba(0, 0, 0, 0.35) 0%,
+              rgba(0, 0, 0, 0.18) 25%,
+              rgba(0, 0, 0, 0.08) 45%,
+              rgba(0, 0, 0, 0) 65%
+            )
+          `,
+        }}
+      />
+
+      {/* Contenu */}
+      <div className="relative z-10 mx-auto flex h-full max-w-7xl items-center px-6 sm:px-10 md:px-16">
         
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight tracking-wide mb-4 text-yellow-300">
-          {titre}
-        </h1>
+        <div className="max-w-2xl text-left">
+          <h1 className="text-4xl md:text-6xl font-semibold leading-tight tracking-tight">
+            {titre}
+          </h1>
 
-        <p className="text-gray-100 text-lg sm:text-xl max-w-lg mb-6">
-          {intro}
-        </p>
-
-      </div>
-
-      <div className="md:w-1/2 w-full h-1/2 md:h-full relative overflow-hidden">
-
-        {/* Image principale */}
-        <img
-          src={image}
-          alt="Entraînement Taekwondo"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
+          <p className="mt-4 text-lg md:text-xl text-white/80 leading-relaxed">
+            {intro}
+          </p>
+        </div>
 
       </div>
     </section>
-  )
+  );
 }
 
 export default HeroPages;

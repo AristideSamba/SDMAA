@@ -1,31 +1,6 @@
 "use client";
-import { useState } from "react";
 
 function SubscribeBtn() {
-  const [ripples, setRipples] = useState([]);
-
-  const createRipple = (e) => {
-    const button = e.currentTarget;
-    const rect = button.getBoundingClientRect();
-
-    const size = Math.max(rect.width, rect.height);
-    const x = e.clientX - rect.left - size / 2;
-    const y = e.clientY - rect.top - size / 2;
-
-    const ripple = {
-      x,
-      y,
-      size,
-      id: Date.now(),
-    };
-
-    setRipples((prev) => [...prev, ripple]);
-
-    setTimeout(() => {
-      setRipples((prev) => prev.slice(1));
-    }, 600);
-  };
-
   const scrollToSection = () => {
     const section = document.getElementById("abonnements");
     section?.scrollIntoView({ behavior: "smooth" });
@@ -33,53 +8,32 @@ function SubscribeBtn() {
 
   return (
     <button
-      onMouseDown={createRipple}
+      type="button"
       onClick={scrollToSection}
       className="
-        relative
-        overflow-hidden
-        bg-transparent
-        text-white
-        font-bold
-        py-2 px-4
-        rounded-full
+        inline-flex items-center justify-center
+        rounded-4xl
+        border border-white/20
+        bg-white/10
+        backdrop-blur-md
         cursor-pointer
-        transition-shadow
-        duration-200
-        shadow-[0_0_9px_#ff0039]
-        hover:shadow-[0_0_15px_#ff0045] 
+        px-6 py-3
+        text-sm font-medium text-white
+        shadow-[0_8px_30px_rgba(0,0,0,0.12)]
+        transition-all duration-300
+        hover:bg-white/16
+        hover:border-white/30
+        hover:-translate-y-0.5
+        active:translate-y-0
+        focus-visible:outline-none
+        focus-visible:ring-2
+        focus-visible:ring-white/70
+        focus-visible:ring-offset-2
+        focus-visible:ring-offset-black/30
       "
+      aria-label="Aller à la section des abonnements"
     >
-      S'INSCRIRE
-
-      {ripples.map((ripple) => (
-        <span
-          key={ripple.id}
-          style={{
-            position: "absolute",
-            borderRadius: "50%",
-            background: "rgba(255, 0, 0, 0.25)",
-            width: ripple.size,
-            height: ripple.size,
-            left: ripple.x,
-            top: ripple.y,
-            transform: "scale(0)",
-            animation: "ripple 1000ms ease-out",
-            pointerEvents: "none",
-          }}
-        />
-      ))}
-
-      <style>
-        {`
-          @keyframes ripple {
-            to {
-              transform: scale(4);
-              opacity: 0;
-            }
-          }
-        `}
-      </style>
+      S’inscrire
     </button>
   );
 }

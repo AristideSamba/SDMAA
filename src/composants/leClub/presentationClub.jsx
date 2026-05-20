@@ -1,22 +1,41 @@
+import { motion } from "framer-motion";
+
 function PresentationClub() {
   return (
     <section className="py-16 px-4 sm:px-10 max-w-7xl mx-auto">
 
       {/* Titre */}
-      <div className="text-center mb-12">
-        <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-          Saint-Denis Martial Art Academy
-        </h2>
+      <div className="mx-auto mb-12 max-w-3xl text-center">
+          <motion.p
+            className="mb-4 text-sm font-semibold uppercase tracking-[0.22em] text-red-600/80"
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            Saint-Denis Martial Art Academy
+          </motion.p>
 
-        <div className="w-24 h-1 bg-[radial-gradient(circle_at_top_left,_#800020,_#4d0015)] mx-auto mb-6 rounded-full"></div>
+          <motion.h1
+            className="text-4xl font-semibold tracking-tight text-gray-950 sm:text-5xl"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, delay: 0.1 }}
+          >
+            Découvrez tout à propos de notre club
+          </motion.h1>
 
-        <p className="max-w-2xl mx-auto text-gray-600 text-lg leading-relaxed">
-          Notre club accueille tous les passionnés de taekwondo dans un esprit
+          <motion.p
+            className="mt-5 text-base leading-7 text-gray-600 sm:text-lg"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.55, delay: 0.2 }}
+          >
+            Notre club accueille tous les passionnés de taekwondo dans un esprit
           de respect, de discipline et de progression. Ouvert aux enfants,
           adolescents et adultes, il permet à chacun de pratiquer et d’évoluer
           dans une ambiance conviviale et motivante.
-        </p>
-      </div>
+          </motion.p>
+        </div>
 
       {/* Stats du club */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">

@@ -1,93 +1,41 @@
 "use client";
-import { useState } from "react";
+
 import { Link } from "react-router-dom";
 
 function PlanningBtn() {
-  const [ripples, setRipples] = useState([]);
-
-  const createRipple = (e) => {
-    const button = e.currentTarget;
-    const rect = button.getBoundingClientRect();
-
-    const size = Math.max(rect.width, rect.height);
-    const x = e.clientX - rect.left - size / 2;
-    const y = e.clientY - rect.top - size / 2;
-
-    const ripple = {
-      x,
-      y,
-      size,
-      id: Date.now(),
-    };
-
-    setRipples((prev) => [...prev, ripple]);
-
-    setTimeout(() => {
-      setRipples((prev) => prev.slice(1));
-    }, 600);
-  };
-
   return (
     <Link to="/planning" className="w-full sm:w-auto">
-      <button
-        onClick={createRipple}
+      <span
+        role="button"
+        tabIndex={0}
         className="
-          relative overflow-hidden
-
+          inline-flex items-center justify-center
           w-full sm:w-auto
-          text-center
 
-          bg-transparent
-          text-white
-          font-bold
-          tracking-wide
+          rounded-4xl
+          border border-white/15
+          bg-white/5
+          backdrop-blur-md
 
-          text-sm sm:text-base lg:text-lg
+          px-6 py-3
+          text-sm font-medium text-white
 
-          py-3 px-6
-          sm:py-2 sm:px-6
-          lg:px-8
+          transition-all duration-300
+          hover:bg-white/10
+          hover:border-white/25
+          hover:-translate-y-0.5
+          active:translate-y-0
 
-          rounded-full
-          cursor-pointer
-
-          transition-all duration-200
-
-          shadow-[0_0_9px_#ff0039]
-          hover:shadow-[0_0_18px_#ff0045]
+          focus-visible:outline-none
+          focus-visible:ring-2
+          focus-visible:ring-white/70
+          focus-visible:ring-offset-2
+          focus-visible:ring-offset-black/30
         "
+        aria-label="Voir le planning des cours"
       >
-        NOTRE PLANNING
-
-        {ripples.map((ripple) => (
-          <span
-            key={ripple.id}
-            style={{
-              position: "absolute",
-              borderRadius: "50%",
-              background: "rgba(255,0,0,0.25)",
-              width: ripple.size,
-              height: ripple.size,
-              left: ripple.x,
-              top: ripple.y,
-              transform: "scale(0)",
-              animation: "ripple 1000ms ease-out",
-              pointerEvents: "none",
-            }}
-          />
-        ))}
-
-        <style>
-          {`
-            @keyframes ripple {
-              to {
-                transform: scale(4);
-                opacity: 0;
-              }
-            }
-          `}
-        </style>
-      </button>
+        Notre planning
+      </span>
     </Link>
   );
 }
