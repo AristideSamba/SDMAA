@@ -1,0 +1,25 @@
+name: CD - SDMAA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["master", "main"]
+
+jobs:
+  deploy:
+    name: Deploy with Docker Compose
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy on remote server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd ${{ secrets.SERVER_PATH }}
+            git pull
+            docker compose down
+            docker compose up -d --build
+            docker image prune -f
