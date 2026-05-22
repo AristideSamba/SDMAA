@@ -1,0 +1,64 @@
+name: CI - SDMAA
+
+on:
+  push:
+    branches: ["master", "main"]
+  pull_request:
+    branches: ["master", "main"]
+
+jobs:
+  backend:
+    name: Backend Spring Boot
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: sdmaa_back_one
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Lancer les tests backend
+        run: mvn clean test
+
+  frontend:
+    name: Frontend React
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: sdmaa_front
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Installer les dépendances
+        run: npm install
+
+      - name: Build du frontend
+        run: npm run build
+
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Vérifier le build Docker Compose
+        run: docker compose build

@@ -1,6 +1,6 @@
 import HeroPages from "../composants/layouts/heroPages";
 import imgActivite from "../assets/activite.jpg";
-import ActiviteCard from "../composants/activites/activiteCard";
+import ActiviteCard from "../composants/activites/ActiviteCard";
 
 function Activites(){
   return(

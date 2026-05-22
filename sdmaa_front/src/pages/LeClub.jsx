@@ -1,7 +1,7 @@
 import HeroPages from "../composants/layouts/heroPages";
 import equipement from "../assets/equipement.jpg";
-import PresentationClub from "../composants/leClub/PresentationClub";
-import HistoriqueClub from "../composants/leClub/HistoriqueClub";
+import PresentationClub from "../composants/leClub/presentationClub";
+import HistoriqueClub from "../composants/leClub/historiqueClub";
 
 function LeClub() {
   return (
