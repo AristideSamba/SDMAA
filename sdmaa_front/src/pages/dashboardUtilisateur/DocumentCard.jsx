@@ -31,7 +31,7 @@ function DocumentCard({ doc, onDelete }) {
 
   return (
     <article className="flex h-full flex-col justify-between rounded-3xl border border-black/5 bg-white/90 p-5 shadow-[0_10px_30px_rgba(0,0,0,0.05)] transition-shadow duration-300 hover:shadow-[0_16px_40px_rgba(0,0,0,0.08)]">
-      {/* HEADER */}
+      {/* HEADER De MA PAGE */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-4">
           {/* ICON */}
