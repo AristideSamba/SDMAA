@@ -3,7 +3,7 @@ name: CD - SDMAA
 on:
   workflow_dispatch:
   push:
-    branches: ["master", "main"]
+    
 
 jobs:
   deploy:
