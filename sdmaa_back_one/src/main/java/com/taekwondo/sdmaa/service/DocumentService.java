@@ -1,5 +1,7 @@
 package com.taekwondo.sdmaa.service;
 
+import org.jsoup.Jsoup;
+import org.jsoup.safety.Safelist;
 import com.taekwondo.sdmaa.dto.DocumentDTO;
 import com.taekwondo.sdmaa.entity.Activite;
 import com.taekwondo.sdmaa.entity.Document;

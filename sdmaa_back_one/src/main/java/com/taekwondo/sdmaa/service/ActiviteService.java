@@ -5,6 +5,7 @@ import com.taekwondo.sdmaa.entity.Activite;
 import com.taekwondo.sdmaa.exception.ResourceNotFoundException;
 import com.taekwondo.sdmaa.mapper.ActiviteMapper;
 import com.taekwondo.sdmaa.repository.ActiviteRepository;
+import com.taekwondo.sdmaa.security.XssSanitizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -17,6 +18,12 @@ public class ActiviteService {
     private final ActiviteRepository repository;
 
     public Activite create(Activite activite) {
+        System.out.println("ACTIVITE REÇUE = " + activite);
+
+        sanitizeActivite(activite);
+
+        System.out.println("ACTIVITE NETTOYÉE = " + activite);
+
         return repository.save(activite);
     }
 
@@ -39,17 +46,17 @@ public class ActiviteService {
     public Activite update(Long id, Activite updated) {
         Activite activite = getEntityById(id);
 
-        activite.setTitre(updated.getTitre());
-        activite.setDescription(updated.getDescription());
+        activite.setTitre(XssSanitizer.clean(updated.getTitre()));
+        activite.setDescription(XssSanitizer.clean(updated.getDescription()));
         activite.setDateActivite(updated.getDateActivite());
         activite.setHeureDebut(updated.getHeureDebut());
         activite.setHeureFin(updated.getHeureFin());
-        activite.setLieu(updated.getLieu());
+        activite.setLieu(XssSanitizer.clean(updated.getLieu()));
         activite.setPrix(updated.getPrix());
         activite.setCapaciteMax(updated.getCapaciteMax());
         activite.setIsInternal(updated.getIsInternal());
         activite.setTypeActivite(updated.getTypeActivite());
-        activite.setLienExterne(updated.getLienExterne());
+        activite.setLienExterne(XssSanitizer.clean(updated.getLienExterne()));
         activite.setImageActivite(updated.getImageActivite());
 
         return repository.save(activite);
@@ -58,5 +65,12 @@ public class ActiviteService {
     public void delete(Long id) {
         Activite activite = getEntityById(id);
         repository.delete(activite);
+    }
+
+    private void sanitizeActivite(Activite activite) {
+        activite.setTitre(XssSanitizer.clean(activite.getTitre()));
+        activite.setDescription(XssSanitizer.clean(activite.getDescription()));
+        activite.setLieu(XssSanitizer.clean(activite.getLieu()));
+        activite.setLienExterne(XssSanitizer.clean(activite.getLienExterne()));
     }
 }

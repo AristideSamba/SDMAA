@@ -46,4 +46,11 @@ public class InscriptionActivite {
     private String modePaiement;
 
     private LocalDate dateValidationAdmin;
+
+    @OneToOne(
+            mappedBy = "inscriptionActivite",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private ResultatCompetition resultatCompetition;
 }

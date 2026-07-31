@@ -1,20 +1,26 @@
 package com.taekwondo.sdmaa.service;
 
 import com.taekwondo.sdmaa.dto.ChangePasswordRequest;
+import com.taekwondo.sdmaa.dto.ImageUploadResponse;
+import com.taekwondo.sdmaa.dto.UpdateProfilRequest;
 import com.taekwondo.sdmaa.dto.UtilisateurDTO;
 import com.taekwondo.sdmaa.entity.Ceinture;
 import com.taekwondo.sdmaa.entity.Utilisateur;
+import com.taekwondo.sdmaa.exception.BusinessException;
 import com.taekwondo.sdmaa.exception.ResourceNotFoundException;
 import com.taekwondo.sdmaa.mapper.UtilisateurMapper;
 import com.taekwondo.sdmaa.repository.CeintureRepository;
 import com.taekwondo.sdmaa.repository.UtilisateurRepository;
+import com.taekwondo.sdmaa.security.XssSanitizer;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import com.taekwondo.sdmaa.exception.BusinessException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -24,47 +30,155 @@ public class UtilisateurService {
     private final UtilisateurRepository repository;
     private final CeintureRepository ceintureRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UtilisateurImageService utilisateurImageService;
 
+    /**
+     * Créer un utilisateur.
+     */
     public Utilisateur create(Utilisateur user) {
+
+        sanitizeUtilisateur(user);
+
+        if (repository.existsByEmail(user.getEmail())) {
+            throw new BusinessException(
+                    "Un utilisateur avec cette adresse email existe déjà"
+            );
+        }
+
         user.setStatutCompte("en_attente");
         user.setRole("ADHERENT");
 
-        if (user.getMotDePasseHash() != null) {
-            user.setMotDePasseHash(passwordEncoder.encode(user.getMotDePasseHash()));
+        if (user.getDateCreationCompte() == null) {
+            user.setDateCreationCompte(LocalDateTime.now());
         }
+
+        if (user.getMotDePasseHash() == null
+                || user.getMotDePasseHash().isBlank()) {
+            throw new BusinessException(
+                    "Le mot de passe est obligatoire"
+            );
+        }
+
+        user.setMotDePasseHash(
+                passwordEncoder.encode(
+                        user.getMotDePasseHash()
+                )
+        );
 
         return repository.save(user);
     }
 
+    /**
+     * Récupérer tous les utilisateurs.
+     */
     public List<UtilisateurDTO> getAll() {
+
         return repository.findAll()
                 .stream()
                 .map(UtilisateurMapper::toDTO)
                 .toList();
     }
 
+    /**
+     * Récupérer un utilisateur par son identifiant.
+     */
     public UtilisateurDTO getById(Long id) {
-        return UtilisateurMapper.toDTO(getEntityById(id));
+
+        return UtilisateurMapper.toDTO(
+                getEntityById(id)
+        );
     }
 
+    /**
+     * Récupérer l'entité Utilisateur par son identifiant.
+     */
     public Utilisateur getEntityById(Long id) {
+
         return repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé"));
+                .orElseThrow(
+                        () -> new ResourceNotFoundException(
+                                "Utilisateur non trouvé"
+                        )
+                );
     }
 
-    public Utilisateur update(Long id, Utilisateur updatedUser) {
+    /**
+     * Modification générale d'un utilisateur.
+     */
+    public Utilisateur update(
+            Long id,
+            Utilisateur updatedUser
+    ) {
+
         Utilisateur user = getEntityById(id);
 
-        user.setNom(updatedUser.getNom());
-        user.setPrenom(updatedUser.getPrenom());
-        user.setEmail(updatedUser.getEmail());
-        user.setTelephone(updatedUser.getTelephone());
-        user.setAdresse(updatedUser.getAdresse());
+        if (updatedUser.getNom() != null) {
+            user.setNom(
+                    XssSanitizer.clean(
+                            updatedUser.getNom().trim()
+                    )
+            );
+        }
+
+        if (updatedUser.getPrenom() != null) {
+            user.setPrenom(
+                    XssSanitizer.clean(
+                            updatedUser.getPrenom().trim()
+                    )
+            );
+        }
+
+        if (updatedUser.getEmail() != null) {
+
+            String nouvelEmail = XssSanitizer.clean(
+                    updatedUser.getEmail().trim().toLowerCase()
+            );
+
+            boolean emailModifie =
+                    !nouvelEmail.equalsIgnoreCase(
+                            user.getEmail()
+                    );
+
+            if (emailModifie
+                    && repository.existsByEmail(nouvelEmail)) {
+                throw new BusinessException(
+                        "Cette adresse email est déjà utilisée"
+                );
+            }
+
+            user.setEmail(nouvelEmail);
+        }
+
+        if (updatedUser.getTelephone() != null) {
+            user.setTelephone(
+                    XssSanitizer.clean(
+                            updatedUser.getTelephone().trim()
+                    )
+            );
+        }
+
+        if (updatedUser.getAdresse() != null) {
+            user.setAdresse(
+                    XssSanitizer.clean(
+                            updatedUser.getAdresse().trim()
+                    )
+            );
+        }
+
+        if (updatedUser.getDateNaissance() != null) {
+            user.setDateNaissance(
+                    updatedUser.getDateNaissance()
+            );
+        }
 
         return repository.save(user);
     }
 
+    /**
+     * Suspendre un utilisateur.
+     */
     public void suspendre(Long id) {
+
         Utilisateur user = getEntityById(id);
 
         user.setStatutCompte("suspendu");
@@ -72,107 +186,487 @@ public class UtilisateurService {
         repository.save(user);
     }
 
+    /**
+     * Récupérer l'utilisateur connecté grâce à son email JWT.
+     */
     public Utilisateur getUtilisateurConnecte() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        Authentication authentication =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
+
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || authentication.getName() == null) {
+            throw new BusinessException(
+                    "Aucun utilisateur authentifié"
+            );
+        }
 
         String email = authentication.getName();
 
         return repository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur connecté non trouvé"));
+                .orElseThrow(
+                        () -> new ResourceNotFoundException(
+                                "Utilisateur connecté non trouvé"
+                        )
+                );
     }
 
+    /**
+     * Récupérer le profil de l'utilisateur connecté.
+     */
     public UtilisateurDTO getMe() {
-        return UtilisateurMapper.toDTO(getUtilisateurConnecte());
+
+        return UtilisateurMapper.toDTO(
+                getUtilisateurConnecte()
+        );
     }
 
-    public UtilisateurDTO assignerCeinture(Long idUtilisateur, Long idCeinture) {
-        Utilisateur utilisateur = getEntityById(idUtilisateur);
+    /**
+     * Attribuer une ceinture à un utilisateur.
+     */
+    public UtilisateurDTO assignerCeinture(
+            Long idUtilisateur,
+            Long idCeinture
+    ) {
 
-        Ceinture ceinture = ceintureRepository.findById(idCeinture)
-                .orElseThrow(() -> new ResourceNotFoundException("Ceinture non trouvée"));
+        Utilisateur utilisateur =
+                getEntityById(idUtilisateur);
+
+        Ceinture ceinture =
+                ceintureRepository.findById(idCeinture)
+                        .orElseThrow(
+                                () -> new ResourceNotFoundException(
+                                        "Ceinture non trouvée"
+                                )
+                        );
 
         utilisateur.setCeinture(ceinture);
 
-        Utilisateur saved = repository.save(utilisateur);
+        Utilisateur utilisateurEnregistre =
+                repository.save(utilisateur);
 
-        return UtilisateurMapper.toDTO(saved);
+        return UtilisateurMapper.toDTO(
+                utilisateurEnregistre
+        );
     }
 
-    public UtilisateurDTO updateMe(Utilisateur updatedUser) {
-        Utilisateur user = getUtilisateurConnecte();
+    /**
+     * Modifier les informations personnelles de l'utilisateur connecté.
+     *
+     * La date de naissance, le rôle, le statut du compte et la ceinture
+     * ne sont volontairement pas modifiables depuis cette méthode.
+     */
+    public UtilisateurDTO updateMe(
+            UpdateProfilRequest request
+    ) {
 
-        user.setEmail(updatedUser.getEmail());
-        user.setAdresse(updatedUser.getAdresse());
-        user.setTelephone(updatedUser.getTelephone());
+        if (request == null) {
+            throw new BusinessException(
+                    "Les informations du profil sont obligatoires"
+            );
+        }
 
-        return UtilisateurMapper.toDTO(repository.save(user));
-    }
-
-    //Password handeling
-    public void changerMotDePasse(ChangePasswordRequest request) {
         Utilisateur utilisateur = getUtilisateurConnecte();
+
+        String nomNettoye = XssSanitizer.clean(
+                request.getNom().trim()
+        );
+
+        String prenomNettoye = XssSanitizer.clean(
+                request.getPrenom().trim()
+        );
+
+        String emailNettoye = XssSanitizer.clean(
+                request.getEmail().trim().toLowerCase()
+        );
+
+        boolean emailModifie =
+                !emailNettoye.equalsIgnoreCase(utilisateur.getEmail());
+
+        if (emailModifie && repository.existsByEmail(emailNettoye)) {
+            throw new BusinessException(
+                    "Cette adresse email est déjà utilisée"
+            );
+        }
+
+        utilisateur.setNom(nomNettoye);
+        utilisateur.setPrenom(prenomNettoye);
+        utilisateur.setEmail(emailNettoye);
+        utilisateur.setTelephone(cleanOptionalText(request.getTelephone()));
+        utilisateur.setAdresse(cleanOptionalText(request.getAdresse()));
+
+        Utilisateur utilisateurMisAJour = repository.save(utilisateur);
+
+        return UtilisateurMapper.toDTO(utilisateurMisAJour);
+    }
+
+    /**
+     * Nettoyer un champ facultatif.
+     * Une chaîne vide est enregistrée sous la forme null.
+     */
+    private String cleanOptionalText(String value) {
+
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        return XssSanitizer.clean(value.trim());
+    }
+
+    /**
+     * Modifier le mot de passe de l'utilisateur connecté.
+     */
+    public void changerMotDePasse(
+            ChangePasswordRequest request
+    ) {
+
+        if (request == null) {
+            throw new BusinessException(
+                    "Les informations du mot de passe sont obligatoires"
+            );
+        }
+
+        Utilisateur utilisateur =
+                getUtilisateurConnecte();
+
+        if (request.getAncienMotDePasse() == null
+                || request.getAncienMotDePasse().isBlank()) {
+            throw new BusinessException(
+                    "L'ancien mot de passe est obligatoire"
+            );
+        }
 
         if (!passwordEncoder.matches(
                 request.getAncienMotDePasse(),
                 utilisateur.getMotDePasseHash()
         )) {
-            throw new BusinessException("Ancien mot de passe incorrect");
+            throw new BusinessException(
+                    "Ancien mot de passe incorrect"
+            );
         }
 
-        if (request.getNouveauMotDePasse() == null || request.getNouveauMotDePasse().length() < 13) {
-            throw new BusinessException("Le nouveau mot de passe doit contenir au moins 13 caractères");
+        if (request.getNouveauMotDePasse() == null
+                || request.getNouveauMotDePasse().length() < 13) {
+            throw new BusinessException(
+                    "Le nouveau mot de passe doit contenir au moins 13 caractères"
+            );
         }
 
-        if (!request.getNouveauMotDePasse().equals(request.getConfirmationMotDePasse())) {
-            throw new BusinessException("Les mots de passe ne correspondent pas");
+        if (!request.getNouveauMotDePasse().equals(
+                request.getConfirmationMotDePasse()
+        )) {
+            throw new BusinessException(
+                    "Les mots de passe ne correspondent pas"
+            );
         }
 
-        if (passwordEncoder.matches(request.getNouveauMotDePasse(), utilisateur.getMotDePasseHash())) {
-            throw new BusinessException("Le nouveau mot de passe doit être différent de l'ancien");
+        if (passwordEncoder.matches(
+                request.getNouveauMotDePasse(),
+                utilisateur.getMotDePasseHash()
+        )) {
+            throw new BusinessException(
+                    "Le nouveau mot de passe doit être différent de l'ancien"
+            );
         }
 
-        utilisateur.setMotDePasseHash(passwordEncoder.encode(request.getNouveauMotDePasse()));
+        utilisateur.setMotDePasseHash(
+                passwordEncoder.encode(
+                        request.getNouveauMotDePasse()
+                )
+        );
 
         repository.save(utilisateur);
     }
 
-    public UtilisateurDTO updateProfilByAdmin(Long id, Utilisateur updatedUser) {
+    /**
+     * Modifier le profil d'un utilisateur depuis l'administration.
+     */
+    public UtilisateurDTO updateProfilByAdmin(
+            Long id,
+            Utilisateur updatedUser
+    ) {
+
+        if (updatedUser == null) {
+            throw new BusinessException(
+                    "Les informations de l'utilisateur sont obligatoires"
+            );
+        }
+
         Utilisateur user = getEntityById(id);
 
-        user.setNom(updatedUser.getNom());
-        user.setPrenom(updatedUser.getPrenom());
-        user.setEmail(updatedUser.getEmail());
-        user.setTelephone(updatedUser.getTelephone());
-        user.setAdresse(updatedUser.getAdresse());
+        if (updatedUser.getNom() != null
+                && !updatedUser.getNom().isBlank()) {
+            user.setNom(
+                    XssSanitizer.clean(
+                            updatedUser.getNom().trim()
+                    )
+            );
+        }
 
-        return UtilisateurMapper.toDTO(repository.save(user));
+        if (updatedUser.getPrenom() != null
+                && !updatedUser.getPrenom().isBlank()) {
+            user.setPrenom(
+                    XssSanitizer.clean(
+                            updatedUser.getPrenom().trim()
+                    )
+            );
+        }
+
+        if (updatedUser.getEmail() != null
+                && !updatedUser.getEmail().isBlank()) {
+
+            String nouvelEmail =
+                    XssSanitizer.clean(
+                            updatedUser
+                                    .getEmail()
+                                    .trim()
+                                    .toLowerCase()
+                    );
+
+            boolean emailModifie =
+                    !nouvelEmail.equalsIgnoreCase(
+                            user.getEmail()
+                    );
+
+            if (emailModifie
+                    && repository.existsByEmail(nouvelEmail)) {
+                throw new BusinessException(
+                        "Cette adresse email est déjà utilisée"
+                );
+            }
+
+            user.setEmail(nouvelEmail);
+        }
+
+        if (updatedUser.getTelephone() != null) {
+            user.setTelephone(
+                    XssSanitizer.clean(
+                            updatedUser.getTelephone().trim()
+                    )
+            );
+        }
+
+        if (updatedUser.getAdresse() != null) {
+            user.setAdresse(
+                    XssSanitizer.clean(
+                            updatedUser.getAdresse().trim()
+                    )
+            );
+        }
+
+        if (updatedUser.getDateNaissance() != null) {
+            user.setDateNaissance(
+                    updatedUser.getDateNaissance()
+            );
+        }
+
+        return UtilisateurMapper.toDTO(
+                repository.save(user)
+        );
     }
 
-    public UtilisateurDTO updateRole(Long id, String role) {
+    /**
+     * Modifier le rôle d'un utilisateur.
+     */
+    public UtilisateurDTO updateRole(
+            Long id,
+            String role
+    ) {
+
+        if (role == null || role.isBlank()) {
+            throw new BusinessException(
+                    "Le rôle est obligatoire"
+            );
+        }
+
         Utilisateur user = getEntityById(id);
 
-        String normalizedRole = role.toUpperCase();
+        String normalizedRole =
+                role.trim().toUpperCase();
 
-        if (!List.of("ADHERENT", "COACH", "ADMIN").contains(normalizedRole)) {
-            throw new BusinessException("Rôle invalide");
+        if (!List.of(
+                "ADHERENT",
+                "COACH",
+                "ADMIN"
+        ).contains(normalizedRole)) {
+            throw new BusinessException(
+                    "Rôle invalide"
+            );
         }
 
         user.setRole(normalizedRole);
 
-        return UtilisateurMapper.toDTO(repository.save(user));
+        return UtilisateurMapper.toDTO(
+                repository.save(user)
+        );
     }
 
-    public UtilisateurDTO updateStatutCompte(Long id, String statut) {
+    /**
+     * Modifier la photo de profil de l'utilisateur connecté.
+     */
+    public ImageUploadResponse updateMyPhoto(
+            MultipartFile photo
+    ) {
+        Utilisateur utilisateur = getUtilisateurConnecte();
+
+        String anciennePhoto = utilisateur.getPhotoUrl();
+
+        /*
+         * Enregistre la nouvelle photo dans :
+         * uploads/profils
+         */
+        String nouveauChemin =
+                utilisateurImageService.enregistrer(photo);
+
+        utilisateur.setPhotoUrl(nouveauChemin);
+
+        repository.save(utilisateur);
+
+        /*
+         * Supprime l'ancienne photo après avoir correctement
+         * enregistré la nouvelle.
+         */
+        if (
+                anciennePhoto != null
+                        && !anciennePhoto.isBlank()
+                        && !anciennePhoto.equals(nouveauChemin)
+        ) {
+            utilisateurImageService.supprimer(
+                    anciennePhoto
+            );
+        }
+
+        String url =
+                ServletUriComponentsBuilder
+                        .fromCurrentContextPath()
+                        .path("/uploads/")
+                        .path(nouveauChemin)
+                        .toUriString();
+
+        return new ImageUploadResponse(
+                nouveauChemin,
+                url
+        );
+    }
+
+    /**
+     * Supprimer la photo de profil de l'utilisateur connecté.
+     */
+    public void deleteMyPhoto() {
+        Utilisateur utilisateur = getUtilisateurConnecte();
+
+        String cheminPhoto =
+                utilisateur.getPhotoUrl();
+
+        if (
+                cheminPhoto == null
+                        || cheminPhoto.isBlank()
+        ) {
+            return;
+        }
+
+        /*
+         * On retire d'abord le chemin enregistré en base.
+         */
+        utilisateur.setPhotoUrl(null);
+
+        repository.save(utilisateur);
+
+        /*
+         * Puis on supprime le fichier physique.
+         */
+        utilisateurImageService.supprimer(
+                cheminPhoto
+        );
+    }
+
+    /**
+     * Modifier le statut du compte.
+     */
+    public UtilisateurDTO updateStatutCompte(
+            Long id,
+            String statut
+    ) {
+
+        if (statut == null || statut.isBlank()) {
+            throw new BusinessException(
+                    "Le statut est obligatoire"
+            );
+        }
+
         Utilisateur user = getEntityById(id);
 
-        String normalizedStatut = statut.toLowerCase();
+        String normalizedStatut =
+                statut.trim().toLowerCase();
 
-        if (!List.of("en_attente", "actif", "suspendu", "refuse").contains(normalizedStatut)) {
-            throw new BusinessException("Statut de compte invalide");
+        if (!List.of(
+                "en_attente",
+                "actif",
+                "suspendu",
+                "refuse"
+        ).contains(normalizedStatut)) {
+            throw new BusinessException(
+                    "Statut de compte invalide"
+            );
         }
 
         user.setStatutCompte(normalizedStatut);
 
-        return UtilisateurMapper.toDTO(repository.save(user));
+        return UtilisateurMapper.toDTO(
+                repository.save(user)
+        );
+    }
+
+    /**
+     * Nettoyer les données textuelles avant enregistrement.
+     */
+    private void sanitizeUtilisateur(
+            Utilisateur user
+    ) {
+
+        if (user.getNom() != null) {
+            user.setNom(
+                    XssSanitizer.clean(
+                            user.getNom().trim()
+                    )
+            );
+        }
+
+        if (user.getPrenom() != null) {
+            user.setPrenom(
+                    XssSanitizer.clean(
+                            user.getPrenom().trim()
+                    )
+            );
+        }
+
+        if (user.getEmail() != null) {
+            user.setEmail(
+                    XssSanitizer.clean(
+                            user.getEmail()
+                                    .trim()
+                                    .toLowerCase()
+                    )
+            );
+        }
+
+        if (user.getTelephone() != null) {
+            user.setTelephone(
+                    XssSanitizer.clean(
+                            user.getTelephone().trim()
+                    )
+            );
+        }
+
+        if (user.getAdresse() != null) {
+            user.setAdresse(
+                    XssSanitizer.clean(
+                            user.getAdresse().trim()
+                    )
+            );
+        }
     }
 }

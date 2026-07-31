@@ -6,8 +6,17 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 
-public interface AnnonceCoursRepository extends JpaRepository<AnnonceCours, Long> {
+public interface AnnonceCoursRepository
+        extends JpaRepository<AnnonceCours, Long> {
 
-    List<AnnonceCours> findByCoursIdCours(Long idCours);
-    List<AnnonceCours> findByCoursIn(List<Cours> cours);
+    List<AnnonceCours>
+    findByCoursIdCours(Long idCours);
+
+    List<AnnonceCours>
+    findByCoursIn(List<Cours> cours);
+
+    List<AnnonceCours>
+    findByCoursInOrderByDateCreationDesc(
+            List<Cours> cours
+    );
 }

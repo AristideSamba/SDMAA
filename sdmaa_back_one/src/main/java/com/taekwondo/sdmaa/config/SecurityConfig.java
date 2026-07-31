@@ -38,11 +38,28 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**", "/error").permitAll()
                         .requestMatchers("/api/abonnements", "/error").permitAll()
                         .requestMatchers("/api/auth/register-complet", "/error").permitAll()
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui.html"
+                        ).permitAll()
 
                         // UTILISATEUR CONNECTÉ
+                        .requestMatchers(HttpMethod.GET, "/api/utilisateurs/me").authenticated()
                         .requestMatchers("/api/me").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/utilisateurs/me").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/utilisateurs/me/password").authenticated()
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/utilisateurs/me/photo"
+                        ).authenticated()
+
+                        .requestMatchers(
+                                HttpMethod.DELETE,
+                                "/api/utilisateurs/me/photo"
+                        ).authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/annonces/**")
+                        .authenticated()
 
                         // ADHÉRENT - ESPACE PERSONNEL
                         .requestMatchers(HttpMethod.GET, "/api/documents/me").hasRole("ADHERENT")

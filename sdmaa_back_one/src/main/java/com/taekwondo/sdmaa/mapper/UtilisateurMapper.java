@@ -18,6 +18,7 @@ public class UtilisateurMapper {
                 .adresse(user.getAdresse())
                 .dateNaissance(user.getDateNaissance())
                 .telephone(user.getTelephone())
+                .photoUrl(user.getPhotoUrl())
 
                 // ⚠️ éviter NullPointerException
                 .ceintureNom(

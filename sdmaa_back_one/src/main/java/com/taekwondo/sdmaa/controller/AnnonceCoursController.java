@@ -4,6 +4,7 @@ import com.taekwondo.sdmaa.dto.AnnonceCoursDTO;
 import com.taekwondo.sdmaa.entity.AnnonceCours;
 import com.taekwondo.sdmaa.service.AnnonceCoursService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -15,40 +16,48 @@ public class AnnonceCoursController {
 
     private final AnnonceCoursService service;
 
-    @PostMapping
-    public AnnonceCours create(
-            @RequestParam Long idCours,
+    @PostMapping("/cours/{idCours}")
+    public ResponseEntity<AnnonceCours> create(
+            @PathVariable Long idCours,
             @RequestBody AnnonceCours annonce
     ) {
-        return service.create(idCours, annonce);
+        return ResponseEntity.ok(
+                service.create(idCours, annonce)
+        );
     }
 
     @GetMapping
-    public List<AnnonceCoursDTO> getAll() {
-        return service.getAll();
-    }
-
-    @GetMapping("/me")
-    public List<AnnonceCoursDTO> getMesAnnonces() {
-        return service.getMesAnnonces();
+    public ResponseEntity<List<AnnonceCoursDTO>> getAll() {
+        return ResponseEntity.ok(
+                service.getAll()
+        );
     }
 
     @GetMapping("/cours/{idCours}")
-    public List<AnnonceCoursDTO> getByCours(@PathVariable Long idCours) {
-        return service.getByCours(idCours);
+    public ResponseEntity<List<AnnonceCoursDTO>> getByCours(
+            @PathVariable Long idCours
+    ) {
+        return ResponseEntity.ok(
+                service.getByCours(idCours)
+        );
     }
 
     @PutMapping("/{id}")
-    public AnnonceCours update(
+    public ResponseEntity<AnnonceCours> update(
             @PathVariable Long id,
             @RequestBody AnnonceCours annonce
     ) {
-        return service.update(id, annonce);
+        return ResponseEntity.ok(
+                service.update(id, annonce)
+        );
     }
 
     @DeleteMapping("/{id}")
-    public void delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(
+            @PathVariable Long id
+    ) {
         service.delete(id);
-    }
 
+        return ResponseEntity.noContent().build();
+    }
 }

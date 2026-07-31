@@ -46,4 +46,7 @@ public class Utilisateur {
     @ManyToOne
     @JoinColumn(name = "id_ceinture", nullable = true)
     private Ceinture ceinture;
+
+    @Column(name = "photo_url")
+    private String photoUrl;
 }

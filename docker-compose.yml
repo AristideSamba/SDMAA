@@ -3,26 +3,64 @@ services:
     image: mysql:8.0
     container_name: sdmaa-mysql
     restart: always
+
+    command: --default-authentication-plugin=mysql_native_password
+
     environment:
       MYSQL_DATABASE: sdmaa
       MYSQL_ROOT_PASSWORD: root
+
     ports:
-      - "3307:3306"
+      - "3306:3306"
+
     volumes:
-      - mysql_data:/var/lib/mysql
+      - mysql_data_existing:/var/lib/mysql
+
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  postgres:
+    image: postgres:16
+    container_name: sdmaa-postgres
+    restart: always
+
+    environment:
+      POSTGRES_DB: sdmaa
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+
+    ports:
+      - "5433:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sdmaa"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   backend:
     build: ./sdmaa_back_one
     container_name: sdmaa_back
     restart: always
+
     depends_on:
-      - mysql
+      postgres:
+        condition: service_healthy
+
     ports:
       - "8080:8080"
+
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/sdmaa?createDatabaseIfNotExist=true&serverTimezone=UTC
-      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/sdmaa?currentSchema=sdmaa
+      SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: root
+
     volumes:
       - ./sdmaa_back_one/uploads:/app/uploads
 
@@ -30,10 +68,16 @@ services:
     build: ./sdmaa_front
     container_name: sdmaa_front
     restart: always
+
     depends_on:
       - backend
+
     ports:
       - "3000:80"
 
 volumes:
-  mysql_data:
+  postgres_data:
+
+  mysql_data_existing:
+    external: true
+    name: sdmaa_mysql_data

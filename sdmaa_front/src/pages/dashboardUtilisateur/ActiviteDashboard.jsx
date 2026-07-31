@@ -114,130 +114,153 @@ function DashboardActivityCard({ activite, registration }) {
   };
 
   return (
-    <article
-      className="flex h-full flex-col gap-3"
-      aria-labelledby={`activite-title-${activite.id}`}
+   <article
+  className="flex h-full flex-col gap-3"
+  aria-labelledby={`activite-title-${activite.id}`}
+  aria-describedby={`activite-description-${activite.id}`}
+>
+  <div className="relative h-48 w-full overflow-hidden rounded-3xl">
+    <img
+      src={imageSrc}
+      alt={`Illustration de l'activité ${activite.titre}`}
+      loading="lazy"
+      className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
+      onError={(e) => {
+        e.currentTarget.src = FALLBACK_IMAGE;
+      }}
+    />
+
+    <div
+      className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent"
+      aria-hidden="true"
+    />
+
+    <div
+      className="absolute bottom-3 left-3 flex flex-wrap gap-2"
+      aria-label="Informations sur l'activité"
     >
-      <div className="relative h-48 w-full overflow-hidden rounded-3xl">
-        <img
-          src={imageSrc}
-          alt={`Illustration de l'activité ${activite.titre}`}
-          className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
-          onError={(e) => {
-            e.currentTarget.src = FALLBACK_IMAGE;
-          }}
-        />
+      <Badge variant={isExternal ? "blue" : "green"}>
+        {isExternal ? "Externe" : "Club"}
+      </Badge>
 
-        <div
-          className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent"
+      <Badge variant={past ? "muted" : "yellow"}>
+        {past ? "Terminé" : "À venir"}
+      </Badge>
+
+      {statusMeta && (
+        <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
+      )}
+    </div>
+
+    <div className="absolute right-3 top-3">
+      <span
+        className="rounded-2xl bg-black/50 px-3 py-1.5 text-sm font-semibold text-white backdrop-blur-sm"
+        aria-label={`Prix : ${
+          Number(activite.prix) === 0 ? "gratuit" : `${activite.prix} euros`
+        }`}
+      >
+        {Number(activite.prix) === 0 ? "Gratuit" : `${activite.prix} €`}
+      </span>
+    </div>
+  </div>
+
+  <div className="flex flex-1 flex-col rounded-3xl border border-black/5 bg-white p-5 shadow-[0_10px_35px_rgba(0,0,0,0.06)] transition-shadow duration-300 hover:shadow-[0_16px_40px_rgba(0,0,0,0.10)]">
+    <h3
+      id={`activite-title-${activite.id}`}
+      className="text-xl font-semibold tracking-tight text-gray-950"
+    >
+      {activite.titre}
+    </h3>
+
+    <p
+      id={`activite-description-${activite.id}`}
+      className="mt-2 line-clamp-2 text-sm leading-6 text-gray-600"
+    >
+      {activite.description || "Aucune description disponible."}
+    </p>
+
+    <dl className="mt-4 space-y-2 text-sm text-gray-600">
+      <div className="flex items-center gap-2">
+        <CalendarDays
+          size={15}
           aria-hidden="true"
+          className="shrink-0 text-gray-400"
         />
-
-        <div className="absolute bottom-3 left-3 flex flex-wrap gap-2">
-          <Badge variant={isExternal ? "blue" : "green"}>
-            {isExternal ? "Externe" : "Club"}
-          </Badge>
-
-          <Badge variant={past ? "muted" : "yellow"}>
-            {past ? "Terminé" : "À venir"}
-          </Badge>
-
-          {statusMeta && (
-            <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
-          )}
-        </div>
-
-        <div className="absolute right-3 top-3">
-          <span className="rounded-2xl bg-black/50 px-3 py-1.5 text-sm font-semibold text-white backdrop-blur-sm">
-            {Number(activite.prix) === 0 ? "Gratuit" : `${activite.prix} €`}
-          </span>
-        </div>
+        <dt className="sr-only">Date</dt>
+        <dd>
+          <time dateTime={activite.date}>
+            {formatDate(activite.date)}
+          </time>
+        </dd>
       </div>
 
-      <div className="flex flex-1 flex-col rounded-3xl border border-black/5 bg-white p-5 shadow-[0_10px_35px_rgba(0,0,0,0.06)] transition-shadow duration-300 hover:shadow-[0_16px_40px_rgba(0,0,0,0.10)]">
-        <h3
-          id={`activite-title-${activite.id}`}
-          className="text-xl font-semibold tracking-tight text-gray-950"
+      <div className="flex items-center gap-2">
+        <MapPin
+          size={15}
+          aria-hidden="true"
+          className="shrink-0 text-gray-400"
+        />
+        <dt className="sr-only">Lieu</dt>
+        <dd>{activite.lieu || "Lieu non précisé"}</dd>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Clock3
+          size={15}
+          aria-hidden="true"
+          className="shrink-0 text-gray-400"
+        />
+        <dt className="sr-only">Durée</dt>
+        <dd>{activite.duree || "Durée non précisée"}</dd>
+      </div>
+    </dl>
+
+    <div className="mt-auto flex justify-center pt-5">
+      {isExternal ? (
+        <a
+          href={activite.lien}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={`S'inscrire à l'activité externe ${activite.titre}`}
+          aria-label={`S'inscrire à l'activité externe ${activite.titre}, ouvre un nouvel onglet`}
+          className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-gray-950 px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-black focus:outline-none focus:ring-4 focus:ring-[#800020]/20"
         >
-          {activite.titre}
-        </h3>
-
-        <p className="mt-2 line-clamp-2 text-sm leading-6 text-gray-600">
-          {activite.description || "Aucune description disponible."}
-        </p>
-
-        <div className="mt-4 space-y-2 text-sm text-gray-600">
-          <div className="flex items-center gap-2">
-            <CalendarDays
-              size={15}
-              aria-hidden="true"
-              className="shrink-0 text-gray-400"
-            />
-            <span>{formatDate(activite.date)}</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <MapPin
-              size={15}
-              aria-hidden="true"
-              className="shrink-0 text-gray-400"
-            />
-            <span>{activite.lieu}</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Clock3
-              size={15}
-              aria-hidden="true"
-              className="shrink-0 text-gray-400"
-            />
-            <span>{activite.duree}</span>
-          </div>
-        </div>
-
-        <div className="mt-auto flex justify-center pt-5">
-          {isExternal ? (
-            <a
-              href={activite.lien}
-              target="_blank"
-              rel="noreferrer"
-              aria-label={`S'inscrire à l'activité externe ${activite.titre}`}
-              className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-gray-950 px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-black focus:outline-none focus:ring-4 focus:ring-[#800020]/20"
-            >
-              <span>S'inscrire</span>
-              <ExternalLink size={15} aria-hidden="true" />
-            </a>
-          ) : registration ? (
-            <button
-              type="button"
-              disabled
-              aria-disabled="true"
-              className="inline-flex w-full cursor-not-allowed items-center justify-center rounded-2xl bg-gray-100 px-5 py-3 text-sm font-medium text-gray-500"
-            >
-              Déjà inscrit
-            </button>
-          ) : past ? (
-            <button
-              type="button"
-              disabled
-              aria-disabled="true"
-              className="inline-flex w-full cursor-not-allowed items-center justify-center rounded-2xl bg-gray-100 px-5 py-3 text-sm font-medium text-gray-500"
-            >
-              Terminé
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleInternalRegistration}
-              aria-label={`S'inscrire à l'activité ${activite.titre}`}
-              className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-black/15 bg-transparent px-6 py-3 text-sm font-medium text-gray-950 transition-all duration-200 hover:border-black/30 hover:bg-black/5 focus:outline-none focus:ring-4 focus:ring-[#800020]/20"
-            >
-              S'inscrire
-            </button>
-          )}
-        </div>
-      </div>
-    </article>
+          <span>S'inscrire</span>
+          <ExternalLink size={15} aria-hidden="true" />
+        </a>
+      ) : registration ? (
+        <button
+          type="button"
+          disabled
+          aria-disabled="true"
+          aria-label={`Vous êtes déjà inscrit à l'activité ${activite.titre}`}
+          className="inline-flex w-full cursor-not-allowed items-center justify-center rounded-2xl bg-gray-100 px-5 py-3 text-sm font-medium text-gray-500"
+        >
+          Déjà inscrit
+        </button>
+      ) : past ? (
+        <button
+          type="button"
+          disabled
+          aria-disabled="true"
+          aria-label={`L'activité ${activite.titre} est terminée`}
+          className="inline-flex w-full cursor-not-allowed items-center justify-center rounded-2xl bg-gray-100 px-5 py-3 text-sm font-medium text-gray-500"
+        >
+          Terminé
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={handleInternalRegistration}
+          aria-label={`S'inscrire à l'activité ${activite.titre}`}
+          className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-black/15 bg-transparent px-6 py-3 text-sm font-medium text-gray-950 transition-all duration-200 hover:border-black/30 hover:bg-black/5 focus:outline-none focus:ring-4 focus:ring-[#800020]/20"
+        >
+          S'inscrire
+        </button>
+      )}
+    </div>
+  </div>
+</article>
   );
 }
 
