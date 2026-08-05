@@ -31,7 +31,9 @@ public class Utilisateur {
     private String motDePasseHash;
 
     private LocalDate dateNaissance;
+
     private String telephone;
+
     private String adresse;
 
     @Column(nullable = false)
@@ -44,9 +46,19 @@ public class Utilisateur {
     private LocalDateTime dateCreationCompte;
 
     @ManyToOne
-    @JoinColumn(name = "id_ceinture", nullable = true)
+    @JoinColumn(name = "id_ceinture")
     private Ceinture ceinture;
 
-    @Column(name = "photo_url")
+    /**
+     * URL publique sécurisée de la photo Cloudinary.
+     */
+    @Column(name = "photo_url", length = 500)
     private String photoUrl;
+
+    /**
+     * Identifiant technique Cloudinary utilisé
+     * pour remplacer ou supprimer la photo.
+     */
+    @Column(name = "photo_public_id")
+    private String photoPublicId;
 }

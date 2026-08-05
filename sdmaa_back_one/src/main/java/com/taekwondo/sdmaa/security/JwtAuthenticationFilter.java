@@ -7,6 +7,9 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -22,8 +25,30 @@ import java.io.IOException;
 public class JwtAuthenticationFilter
         extends OncePerRequestFilter {
 
+    private static final Logger LOGGER =
+            LoggerFactory.getLogger(
+                    JwtAuthenticationFilter.class
+            );
+
     private final JwtService jwtService;
-    private final CustomUserDetailsService userDetailsService;
+
+    private final CustomUserDetailsService
+            userDetailsService;
+
+    /**
+     * Les requêtes OPTIONS correspondent généralement
+     * aux vérifications CORS envoyées par le navigateur.
+     *
+     * Elles ne nécessitent pas de validation JWT.
+     */
+    @Override
+    protected boolean shouldNotFilter(
+            HttpServletRequest request
+    ) {
+        return HttpMethod.OPTIONS.matches(
+                request.getMethod()
+        );
+    }
 
     @Override
     protected void doFilterInternal(
@@ -32,95 +57,171 @@ public class JwtAuthenticationFilter
             FilterChain filterChain
     ) throws ServletException, IOException {
 
-        final String authHeader =
-                request.getHeader("Authorization");
+        String authHeader =
+                request.getHeader(
+                        "Authorization"
+                );
 
         /*
-         * Aucun token : on laisse Spring Security
-         * décider si la route est publique ou protégée.
+         * Aucun token :
+         * Spring Security décidera ensuite si la route
+         * est publique ou protégée.
          */
         if (
-                authHeader == null ||
-                        !authHeader.startsWith("Bearer ")
+                authHeader == null
+                        || !authHeader.startsWith(
+                        "Bearer "
+                )
         ) {
-            filterChain.doFilter(request, response);
+            filterChain.doFilter(
+                    request,
+                    response
+            );
+
             return;
         }
 
-        final String jwt =
+        String jwt =
                 authHeader.substring(7);
 
+        /*
+         * Ce bloc traite uniquement la validation JWT.
+         *
+         * La suite de la requête ne doit pas rester
+         * dans ce try, sinon une erreur Cloudinary,
+         * PostgreSQL ou métier deviendrait un faux 401.
+         */
         try {
-            final String email =
-                    jwtService.extractEmail(jwt);
-
-            if (
-                    email != null &&
-                            SecurityContextHolder
-                                    .getContext()
-                                    .getAuthentication() == null
-            ) {
-                UserDetails userDetails =
-                        userDetailsService
-                                .loadUserByUsername(email);
-
-                boolean tokenValide =
-                        jwtService.isTokenValid(
-                                jwt,
-                                userDetails.getUsername()
-                        );
-
-                if (tokenValide) {
-                    UsernamePasswordAuthenticationToken authToken =
-                            new UsernamePasswordAuthenticationToken(
-                                    userDetails,
-                                    null,
-                                    userDetails.getAuthorities()
-                            );
-
-                    authToken.setDetails(
-                            new WebAuthenticationDetailsSource()
-                                    .buildDetails(request)
-                    );
-
-                    SecurityContextHolder
-                            .getContext()
-                            .setAuthentication(authToken);
-                }
-            }
-
-            filterChain.doFilter(request, response);
+            authentifierUtilisateur(
+                    jwt,
+                    request
+            );
 
         } catch (ExpiredJwtException exception) {
             SecurityContextHolder.clearContext();
 
             writeUnauthorizedResponse(
                     response,
-                    "Votre session a expiré. Veuillez vous reconnecter."
+                    "Votre session a expiré. "
+                            + "Veuillez vous reconnecter."
             );
+
+            return;
 
         } catch (JwtException exception) {
             SecurityContextHolder.clearContext();
 
+            LOGGER.warn(
+                    "JWT invalide pour {} {} : {}",
+                    request.getMethod(),
+                    request.getRequestURI(),
+                    exception.getMessage()
+            );
+
             writeUnauthorizedResponse(
                     response,
-                    "Le token d'authentification est invalide."
+                    "Le token d'authentification "
+                            + "est invalide."
             );
+
+            return;
 
         } catch (Exception exception) {
             SecurityContextHolder.clearContext();
 
-            /*
-             * On évite de transformer toutes les erreurs
-             * métier en erreur 401.
-             *
-             * Ici, l'exception concerne uniquement le filtre JWT.
-             */
+            LOGGER.error(
+                    "Erreur pendant la validation JWT "
+                            + "pour {} {}",
+                    request.getMethod(),
+                    request.getRequestURI(),
+                    exception
+            );
+
             writeUnauthorizedResponse(
                     response,
                     "Impossible de valider la session."
             );
+
+            return;
         }
+
+        /*
+         * Très important :
+         * cette ligne est en dehors du try/catch JWT.
+         *
+         * Les erreurs provenant du contrôleur, du service
+         * ou de Cloudinary seront maintenant traitées
+         * comme de vraies erreurs backend.
+         */
+        filterChain.doFilter(
+                request,
+                response
+        );
+    }
+
+    /**
+     * Valide le JWT et remplit le contexte Spring Security.
+     */
+    private void authentifierUtilisateur(
+            String jwt,
+            HttpServletRequest request
+    ) {
+        String email =
+                jwtService.extractEmail(jwt);
+
+        if (
+                email == null
+                        || email.isBlank()
+        ) {
+            throw new JwtException(
+                    "Le token ne contient pas d'email."
+            );
+        }
+
+        if (
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication() != null
+        ) {
+            return;
+        }
+
+        UserDetails userDetails =
+                userDetailsService
+                        .loadUserByUsername(
+                                email
+                        );
+
+        boolean tokenValide =
+                jwtService.isTokenValid(
+                        jwt,
+                        userDetails.getUsername()
+                );
+
+        if (!tokenValide) {
+            throw new JwtException(
+                    "La validation du token a échoué."
+            );
+        }
+
+        UsernamePasswordAuthenticationToken
+                authentication =
+                new UsernamePasswordAuthenticationToken(
+                        userDetails,
+                        null,
+                        userDetails.getAuthorities()
+                );
+
+        authentication.setDetails(
+                new WebAuthenticationDetailsSource()
+                        .buildDetails(request)
+        );
+
+        SecurityContextHolder
+                .getContext()
+                .setAuthentication(
+                        authentication
+                );
     }
 
     private void writeUnauthorizedResponse(
@@ -140,10 +241,15 @@ public class JwtAuthenticationFilter
                 MediaType.APPLICATION_JSON_VALUE
         );
 
-        response.setCharacterEncoding("UTF-8");
+        response.setCharacterEncoding(
+                "UTF-8"
+        );
 
         String safeMessage =
-                message.replace("\"", "\\\"");
+                message.replace(
+                        "\"",
+                        "\\\""
+                );
 
         response.getWriter().write(
                 """

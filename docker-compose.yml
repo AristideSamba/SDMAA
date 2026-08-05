@@ -61,6 +61,10 @@ services:
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: root
 
+      CLOUDINARY_CLOUD_NAME: cziqis2y
+      CLOUDINARY_API_KEY: 755231732748857
+      CLOUDINARY_API_SECRET: _rl2rPBK77tVsSKj632XmqoAMkw
+
     volumes:
       - ./sdmaa_back_one/uploads:/app/uploads
 

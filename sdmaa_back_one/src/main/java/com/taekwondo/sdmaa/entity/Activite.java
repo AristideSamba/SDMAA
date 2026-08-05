@@ -47,9 +47,8 @@ public class Activite {
     private Boolean isInternal;
 
     @Column(nullable = false)
-    private String typeActivite; // stage, sortie, passage_grade, competition, autre
+    private String typeActivite;
 
-    @Column(nullable = false)
     private String lienExterne;
 
     @Column(nullable = false)
@@ -58,6 +57,16 @@ public class Activite {
     @Column(nullable = false)
     private String discipline;
 
-    @Column(nullable = false)
+    /**
+     * URL publique retournée par Cloudinary.
+     */
+    @Column(name = "image_activite", length = 500)
     private String imageActivite;
+
+    /**
+     * Identifiant Cloudinary utilisé pour remplacer
+     * ou supprimer l'image.
+     */
+    @Column(name = "image_public_id")
+    private String imagePublicId;
 }

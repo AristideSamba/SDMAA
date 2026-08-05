@@ -21,7 +21,7 @@ public class Equipement {
     private String nom;
 
     @Column(nullable = false)
-    private String type; // tenue, protection, accessoire, ceinture, autre
+    private String type;
 
     private String taille;
 
@@ -37,10 +37,20 @@ public class Equipement {
     @Column(nullable = false)
     private Boolean empruntable;
 
-    @Column(nullable = false)
+    /**
+     * URL publique sécurisée retournée par Cloudinary.
+     */
+    @Column(name = "lien_image", length = 500)
     private String lienImage;
 
-    @Column(nullable = false)
+    /**
+     * Identifiant Cloudinary utilisé pour remplacer
+     * ou supprimer l’image.
+     */
+    @Column(name = "image_public_id")
+    private String imagePublicId;
+
+    @Column(nullable = false, length = 1000)
     private String description;
 
     @Column(nullable = false)

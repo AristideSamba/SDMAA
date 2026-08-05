@@ -5,13 +5,17 @@ import com.taekwondo.sdmaa.entity.Equipement;
 
 public class EquipementMapper {
 
-    public static EquipementDTO toDTO(Equipement equipement) {
+    public static EquipementDTO toDTO(
+            Equipement equipement
+    ) {
         return EquipementDTO.builder()
                 .id(equipement.getIdEquipement())
                 .nom(equipement.getNom())
                 .type(equipement.getType())
                 .taille(equipement.getTaille())
-                .quantiteDisponible(equipement.getQuantiteDisponible())
+                .quantiteDisponible(
+                        equipement.getQuantiteDisponible()
+                )
                 .prixAchat(equipement.getPrixAchat())
                 .achetable(equipement.getAchetable())
                 .empruntable(equipement.getEmpruntable())

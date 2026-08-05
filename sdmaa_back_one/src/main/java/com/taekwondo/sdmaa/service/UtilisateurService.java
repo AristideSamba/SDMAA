@@ -18,19 +18,24 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Map;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class UtilisateurService {
 
     private final UtilisateurRepository repository;
     private final CeintureRepository ceintureRepository;
     private final PasswordEncoder passwordEncoder;
-    private final UtilisateurImageService utilisateurImageService;
+    private final CloudinaryImageService cloudinaryImageService;
+    private static final String DOSSIER_PROFILS =
+            "sdmaa/profils";
 
     /**
      * Créer un utilisateur.
@@ -505,82 +510,87 @@ public class UtilisateurService {
     }
 
     /**
-     * Modifier la photo de profil de l'utilisateur connecté.
+     * Ajouter ou remplacer la photo de profil
+     * de l'utilisateur connecté.
      */
     public ImageUploadResponse updateMyPhoto(
             MultipartFile photo
     ) {
-        Utilisateur utilisateur = getUtilisateurConnecte();
-
-        String anciennePhoto = utilisateur.getPhotoUrl();
+        Utilisateur utilisateur =
+                getUtilisateurConnecte();
 
         /*
-         * Enregistre la nouvelle photo dans :
-         * uploads/profils
+         * On envoie d'abord la nouvelle photo.
+         * Si l'upload échoue, l'ancienne reste disponible.
          */
-        String nouveauChemin =
-                utilisateurImageService.enregistrer(photo);
+        Map<String, String> resultat =
+                cloudinaryImageService.uploader(
+                        photo,
+                        DOSSIER_PROFILS
+                );
 
-        utilisateur.setPhotoUrl(nouveauChemin);
+        String nouvelleUrl =
+                resultat.get("url");
+
+        String nouveauPublicId =
+                resultat.get("publicId");
+
+        String ancienPublicId =
+                utilisateur.getPhotoPublicId();
+
+        utilisateur.setPhotoUrl(nouvelleUrl);
+        utilisateur.setPhotoPublicId(
+                nouveauPublicId
+        );
 
         repository.save(utilisateur);
 
         /*
-         * Supprime l'ancienne photo après avoir correctement
-         * enregistré la nouvelle.
+         * On supprime l'ancienne photo uniquement
+         * après avoir enregistré la nouvelle.
          */
         if (
-                anciennePhoto != null
-                        && !anciennePhoto.isBlank()
-                        && !anciennePhoto.equals(nouveauChemin)
+                ancienPublicId != null
+                        && !ancienPublicId.isBlank()
+                        && !ancienPublicId.equals(
+                        nouveauPublicId
+                )
         ) {
-            utilisateurImageService.supprimer(
-                    anciennePhoto
+            cloudinaryImageService.supprimer(
+                    ancienPublicId
             );
         }
 
-        String url =
-                ServletUriComponentsBuilder
-                        .fromCurrentContextPath()
-                        .path("/uploads/")
-                        .path(nouveauChemin)
-                        .toUriString();
-
         return new ImageUploadResponse(
-                nouveauChemin,
-                url
+                nouveauPublicId,
+                nouvelleUrl
         );
     }
 
     /**
-     * Supprimer la photo de profil de l'utilisateur connecté.
+     * Supprimer la photo de profil
+     * de l'utilisateur connecté.
      */
     public void deleteMyPhoto() {
-        Utilisateur utilisateur = getUtilisateurConnecte();
+        Utilisateur utilisateur =
+                getUtilisateurConnecte();
 
-        String cheminPhoto =
-                utilisateur.getPhotoUrl();
+        String publicId =
+                utilisateur.getPhotoPublicId();
 
         if (
-                cheminPhoto == null
-                        || cheminPhoto.isBlank()
+                publicId != null
+                        && !publicId.isBlank()
         ) {
-            return;
+            cloudinaryImageService.supprimer(
+                    publicId
+            );
         }
 
-        /*
-         * On retire d'abord le chemin enregistré en base.
-         */
         utilisateur.setPhotoUrl(null);
+        utilisateur.setPhotoPublicId(null);
 
         repository.save(utilisateur);
-
-        /*
-         * Puis on supprime le fichier physique.
-         */
-        utilisateurImageService.supprimer(
-                cheminPhoto
-        );
     }
 
     /**
