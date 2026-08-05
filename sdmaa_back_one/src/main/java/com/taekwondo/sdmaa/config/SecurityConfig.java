@@ -89,6 +89,11 @@ public class SecurityConfig {
                         ).authenticated()
 
                         .requestMatchers(
+                                HttpMethod.PUT,
+                                "/api/utilisateurs/me/push-token"
+                        ).authenticated()
+
+                        .requestMatchers(
                                 HttpMethod.POST,
                                 "/api/utilisateurs/me/photo"
                         ).authenticated()

@@ -61,4 +61,10 @@ public class Utilisateur {
      */
     @Column(name = "photo_public_id")
     private String photoPublicId;
+
+    /**
+     * Colone utilisée pour le token de notification push
+     */
+    @Column(name = "expo_push_token", length = 255)
+    private String expoPushToken;
 }

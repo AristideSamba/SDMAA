@@ -13,6 +13,8 @@ import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.taekwondo.sdmaa.dto.ExpoPushTokenRequest;
+import org.springframework.http.HttpStatus;
 
 import java.util.List;
 
@@ -124,5 +126,18 @@ public class UtilisateurController {
     @PreAuthorize("isAuthenticated()")
     public void deleteMyPhoto() {
         service.deleteMyPhoto();
+    }
+    /**
+    *Endpoint pour les notifications push
+     */
+    @PutMapping("/me/push-token")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("isAuthenticated()")
+    public void updateMyPushToken(
+            @RequestBody ExpoPushTokenRequest request
+    ) {
+        service.updateMyExpoPushToken(
+                request.getToken()
+        );
     }
 }

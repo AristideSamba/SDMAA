@@ -631,6 +631,46 @@ public class UtilisateurService {
     }
 
     /**
+     * Notification push
+     */
+    public void updateMyExpoPushToken(
+            String token
+    ) {
+        if (
+                token == null
+                        || token.isBlank()
+        ) {
+            throw new BusinessException(
+                    "Le token de notification est obligatoire"
+            );
+        }
+
+        String tokenNettoye = token.trim();
+
+        if (
+                !tokenNettoye.startsWith(
+                        "ExponentPushToken["
+                )
+                        && !tokenNettoye.startsWith(
+                        "ExpoPushToken["
+                )
+        ) {
+            throw new BusinessException(
+                    "Le token Expo Push est invalide"
+            );
+        }
+
+        Utilisateur utilisateur =
+                getUtilisateurConnecte();
+
+        utilisateur.setExpoPushToken(
+                tokenNettoye
+        );
+
+        repository.save(utilisateur);
+    }
+
+    /**
      * Nettoyer les données textuelles avant enregistrement.
      */
     private void sanitizeUtilisateur(
