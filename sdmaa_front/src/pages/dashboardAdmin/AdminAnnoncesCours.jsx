@@ -14,6 +14,11 @@ import {
   X,
 } from "lucide-react";
 
+const API_URL = (
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:8080/api"
+).replace(/\/$/, "");
+
 const typesAnnonce = ["TOUS", "ANNULATION", "REPORT", "INFORMATION"];
 
 const formatDate = (date) => {
@@ -97,66 +102,143 @@ function AdminAnnoncesCours() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const apiFetch = async (url, options = {}) => {
-    const res = await fetch(url, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...(options.headers || {}),
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    });
+  const apiFetch = async (url, options = {}, timeout = 15000) => {
+    const controller = new AbortController();
 
-    if (res.status === 401 || res.status === 403) {
-      localStorage.clear();
-      navigate("/login");
-      return null;
+    const timeoutId = window.setTimeout(() => {
+      controller.abort();
+    }, timeout);
+
+    try {
+      const res = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+        headers: {
+          "Content-Type": "application/json",
+          ...(options.headers || {}),
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+
+      if (res.status === 401 || res.status === 403) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("role");
+        localStorage.removeItem("idUtilisateur");
+
+        navigate("/login");
+        return null;
+      }
+
+      return res;
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        throw new Error(
+          "Le serveur met trop de temps à répondre. Veuillez réessayer."
+        );
+      }
+
+      throw err;
+    } finally {
+      window.clearTimeout(timeoutId);
     }
-
-    return res;
   };
 
   const fetchAnnonces = async () => {
-    const res = await apiFetch("http://localhost:8080/api/annonces-cours");
+    const res = await apiFetch(`${API_URL}/annonces-cours`);
 
     if (!res) return [];
 
     const data = await res.json().catch(() => null);
 
     if (!res.ok) {
-      throw new Error(data?.message || "Impossible de charger les annonces.");
+      throw new Error(
+        data?.message ||
+          `Impossible de charger les annonces (${res.status}).`
+      );
     }
 
-    return data || [];
+    return Array.isArray(data) ? data : [];
   };
 
   const fetchCours = async () => {
-    const res = await apiFetch("http://localhost:8080/api/cours");
+    const res = await apiFetch(`${API_URL}/cours`);
 
     if (!res) return [];
 
     const data = await res.json().catch(() => null);
 
     if (!res.ok) {
-      throw new Error(data?.message || "Impossible de charger les cours.");
+      throw new Error(
+        data?.message || `Impossible de charger les cours (${res.status}).`
+      );
     }
 
-    return data || [];
+    if (Array.isArray(data)) {
+      return data;
+    }
+
+    if (Array.isArray(data?.content)) {
+      return data.content;
+    }
+
+    return [];
   };
 
   const loadData = async () => {
-    try {
-      setError("");
+    setLoading(true);
+    setError("");
 
-      const [annoncesData, coursData] = await Promise.all([
+    try {
+      console.log("Chargement depuis API_URL :", API_URL);
+
+      const [annoncesResult, coursResult] = await Promise.allSettled([
         fetchAnnonces(),
         fetchCours(),
       ]);
 
-      setAnnonces(annoncesData);
-      setCours(coursData);
+      if (annoncesResult.status === "fulfilled") {
+        setAnnonces(annoncesResult.value);
+      } else {
+        console.error("Erreur annonces :", annoncesResult.reason);
+        setAnnonces([]);
+      }
+
+      if (coursResult.status === "fulfilled") {
+        setCours(coursResult.value);
+      } else {
+        console.error("Erreur cours :", coursResult.reason);
+        setCours([]);
+      }
+
+      const messages = [];
+
+      if (annoncesResult.status === "rejected") {
+        messages.push(
+          annoncesResult.reason instanceof Error
+            ? annoncesResult.reason.message
+            : "Impossible de charger les annonces."
+        );
+      }
+
+      if (coursResult.status === "rejected") {
+        messages.push(
+          coursResult.reason instanceof Error
+            ? coursResult.reason.message
+            : "Impossible de charger les cours."
+        );
+      }
+
+      if (messages.length > 0) {
+        setError(messages.join(" "));
+      }
     } catch (err) {
-      setError(err.message);
+      console.error("Erreur chargement général :", err);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Une erreur est survenue pendant le chargement."
+      );
     } finally {
       setLoading(false);
     }
@@ -215,61 +297,78 @@ function AdminAnnoncesCours() {
     }));
   };
 
-  const createAnnonce = async (e) => {
-    e.preventDefault();
+ const createAnnonce = async (e) => {
+  e.preventDefault();
 
-    setSubmitting(true);
-    setError("");
-    setSuccess("");
+  setSubmitting(true);
+  setError("");
+  setSuccess("");
 
-    try {
-      if (!form.idCours) {
-        throw new Error("Veuillez sélectionner un cours.");
-      }
-
-      if (!form.message.trim()) {
-        throw new Error("Veuillez saisir un message.");
-      }
-
-      const body = {
-        typeAnnonce: form.typeAnnonce,
-        message: form.message,
-        dateConcernee: form.dateConcernee || null,
-        jourConcerne: form.jourConcerne || null,
-      };
-
-      const res = await apiFetch(
-        `http://localhost:8080/api/annonces-cours?idCours=${form.idCours}`,
-        {
-          method: "POST",
-          body: JSON.stringify(body),
-        }
-      );
-
-      const data = await res?.json().catch(() => null);
-
-      if (!res?.ok) {
-        throw new Error(data?.message || "Impossible de créer l’annonce.");
-      }
-
-      const updatedAnnonces = await fetchAnnonces();
-      setAnnonces(updatedAnnonces);
-
-      setForm({
-        idCours: "",
-        typeAnnonce: "INFORMATION",
-        message: "",
-        dateConcernee: "",
-        jourConcerne: "",
-      });
-
-      setSuccess("Annonce créée avec succès.");
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
+  try {
+    if (!form.idCours) {
+      throw new Error("Veuillez sélectionner un cours.");
     }
-  };
+
+    if (!form.message.trim()) {
+      throw new Error("Veuillez saisir un message.");
+    }
+
+    const body = {
+      typeAnnonce: form.typeAnnonce,
+      message: form.message.trim(),
+      dateConcernee: form.dateConcernee || null,
+      jourConcerne: form.jourConcerne.trim() || null,
+    };
+
+    const res = await apiFetch(
+      `${API_URL}/annonces-cours/cours/${encodeURIComponent(
+        form.idCours
+      )}`,
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      }
+    );
+
+    if (!res) {
+      return;
+    }
+
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      throw new Error(
+        data?.message ||
+          "Impossible de créer l’annonce."
+      );
+    }
+
+    const updatedAnnonces =
+      await fetchAnnonces();
+
+    setAnnonces(updatedAnnonces);
+
+    setForm({
+      idCours: "",
+      typeAnnonce: "INFORMATION",
+      message: "",
+      dateConcernee: "",
+      jourConcerne: "",
+    });
+
+    setSuccess(
+      "Annonce créée avec succès."
+    );
+  } catch (err) {
+    setError(
+      err instanceof Error
+        ? err.message
+        : "Une erreur est survenue."
+    );
+  } finally {
+    setSubmitting(false);
+  }
+};
 
   const openEditModal = (item) => {
     setEditForm({
@@ -303,7 +402,7 @@ function AdminAnnoncesCours() {
       };
 
       const res = await apiFetch(
-        `http://localhost:8080/api/annonces-cours/${editForm.idAnnonce}`,
+        `${API_URL}/annonces-cours/${editForm.idAnnonce}`,
         {
           method: "PUT",
           body: JSON.stringify(body),
@@ -322,7 +421,11 @@ function AdminAnnoncesCours() {
       setShowEditModal(false);
       setSuccess("Annonce modifiée avec succès.");
     } catch (err) {
-      setError(err.message);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Une erreur est survenue pendant la modification."
+      );
     } finally {
       setUpdating(false);
     }
@@ -335,7 +438,7 @@ function AdminAnnoncesCours() {
 
     try {
       const res = await apiFetch(
-        `http://localhost:8080/api/annonces-cours/${idAnnonce}`,
+        `${API_URL}/annonces-cours/${idAnnonce}`,
         {
           method: "DELETE",
         }
@@ -354,14 +457,32 @@ function AdminAnnoncesCours() {
 
       setSuccess("Annonce supprimée avec succès.");
     } catch (err) {
-      setError(err.message);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Une erreur est survenue pendant la suppression."
+      );
     } finally {
       setDeletingId(null);
     }
   };
 
   if (loading) {
-    return <p className="text-gray-500">Chargement des annonces...</p>;
+    return (
+      <div className="flex min-h-[300px] items-center justify-center">
+        <div className="text-center">
+          <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-gray-200 border-t-[#800020]" />
+
+          <p className="mt-4 text-sm text-gray-500">
+            Chargement des annonces...
+          </p>
+
+          <p className="mt-1 text-xs text-gray-400">
+            Le serveur peut mettre quelques secondes à démarrer.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
