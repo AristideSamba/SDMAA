@@ -2,10 +2,14 @@ package com.taekwondo.sdmaa.service;
 
 import com.taekwondo.sdmaa.entity.Activite;
 import com.taekwondo.sdmaa.entity.AnnonceCours;
+import com.taekwondo.sdmaa.entity.InscriptionActivite;
 import com.taekwondo.sdmaa.entity.NotificationCoursUtilisateur;
+import com.taekwondo.sdmaa.entity.NotificationUtilisateur;
 import com.taekwondo.sdmaa.entity.Utilisateur;
+import com.taekwondo.sdmaa.enums.TypeNotification;
 import com.taekwondo.sdmaa.repository.AdhesionRepository;
 import com.taekwondo.sdmaa.repository.NotificationCoursUtilisateurRepository;
+import com.taekwondo.sdmaa.repository.NotificationUtilisateurRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,18 +23,32 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class NotificationService {
 
+    /**
+     * Ancien repository conservé temporairement
+     * pendant la migration.
+     */
     private final NotificationCoursUtilisateurRepository
             notificationCoursRepository;
+
+    /**
+     * Nouveau repository générique.
+     */
+    private final NotificationUtilisateurRepository
+            notificationUtilisateurRepository;
 
     private final ExpoPushNotificationService
             expoPushNotificationService;
 
-    private final AdhesionRepository adhesionRepository;
+    private final AdhesionRepository
+            adhesionRepository;
+
+    /* ====================================================================== */
+    /*                         ANNONCES DE COURS                               */
+    /* ====================================================================== */
 
     /**
      * Crée les notifications internes et envoie
-     * une notification push aux utilisateurs concernés
-     * par une annonce de cours.
+     * les notifications push pour une annonce de cours.
      */
     @Transactional
     public void notifierAnnonceCours(
@@ -57,19 +75,37 @@ public class NotificationService {
             return;
         }
 
+        /*
+         * Anciennes notifications conservées
+         * temporairement.
+         */
         List<NotificationCoursUtilisateur>
-                notificationsACreer =
+                anciennesNotificationsACreer =
                 new ArrayList<>();
 
         for (Utilisateur utilisateur : utilisateurs) {
-            if (utilisateur == null) {
+            if (
+                    utilisateur == null
+                            || utilisateur.getIdUtilisateur() == null
+            ) {
                 continue;
             }
 
-            creerNotificationInterneSiAbsente(
+            /*
+             * Ancien système.
+             */
+            creerAncienneNotificationAnnonceSiAbsente(
                     annonce,
                     utilisateur,
-                    notificationsACreer
+                    anciennesNotificationsACreer
+            );
+
+            /*
+             * Nouveau système générique.
+             */
+            creerNouvelleNotificationAnnonceSiAbsente(
+                    annonce,
+                    utilisateur
             );
 
             envoyerPushAnnonceCours(
@@ -78,14 +114,14 @@ public class NotificationService {
             );
         }
 
-        if (!notificationsACreer.isEmpty()) {
+        if (!anciennesNotificationsACreer.isEmpty()) {
             notificationCoursRepository.saveAll(
-                    notificationsACreer
+                    anciennesNotificationsACreer
             );
 
             System.out.println(
-                    notificationsACreer.size()
-                            + " notification(s) interne(s) créée(s) "
+                    anciennesNotificationsACreer.size()
+                            + " ancienne(s) notification(s) créée(s) "
                             + "pour l’annonce "
                             + annonce.getIdAnnonce()
             );
@@ -93,10 +129,13 @@ public class NotificationService {
     }
 
     /**
-     * Crée une notification interne seulement
-     * lorsqu’elle n’existe pas déjà.
+     * Crée l’ancienne notification liée directement
+     * à AnnonceCours.
+     *
+     * Cette méthode sera supprimée à la fin
+     * de la migration.
      */
-    private void creerNotificationInterneSiAbsente(
+    private void creerAncienneNotificationAnnonceSiAbsente(
             AnnonceCours annonce,
             Utilisateur utilisateur,
             List<NotificationCoursUtilisateur>
@@ -125,25 +164,89 @@ public class NotificationService {
     }
 
     /**
-     * Envoie la notification Expo au téléphone
-     * lorsque l’utilisateur possède un token valide.
+     * Crée une annonce dans la nouvelle table
+     * notification_utilisateur.
+     */
+    private void creerNouvelleNotificationAnnonceSiAbsente(
+            AnnonceCours annonce,
+            Utilisateur utilisateur
+    ) {
+        Long annonceId =
+                annonce.getIdAnnonce();
+
+        if (
+                annonceId == null
+                        || utilisateur.getIdUtilisateur() == null
+        ) {
+            return;
+        }
+
+        boolean existe =
+                notificationUtilisateurRepository
+                        .existsByUtilisateurIdUtilisateurAndTypeNotificationAndAnnonceId(
+                                utilisateur.getIdUtilisateur(),
+                                TypeNotification.ANNONCE_COURS,
+                                annonceId
+                        );
+
+        if (existe) {
+            return;
+        }
+
+        Long coursId = null;
+        String titreCible = null;
+
+        if (annonce.getCours() != null) {
+            coursId =
+                    annonce.getCours()
+                            .getIdCours();
+
+            titreCible =
+                    texteOuNull(
+                            annonce.getCours()
+                                    .getTitre()
+                    );
+        }
+
+        NotificationUtilisateur notification =
+                NotificationUtilisateur.builder()
+                        .utilisateur(utilisateur)
+                        .typeNotification(
+                                TypeNotification.ANNONCE_COURS
+                        )
+                        .titre(
+                                construireTitreAnnonce(
+                                        annonce
+                                )
+                        )
+                        .message(
+                                construireMessageAnnonce(
+                                        annonce
+                                )
+                        )
+                        .titreCible(titreCible)
+                        .annonceId(annonceId)
+                        .coursId(coursId)
+                        .estLue(false)
+                        .dateLecture(null)
+                        .build();
+
+        notificationUtilisateurRepository.save(
+                notification
+        );
+    }
+
+    /**
+     * Envoie le push d’une annonce de cours.
      */
     private void envoyerPushAnnonceCours(
             AnnonceCours annonce,
             Utilisateur utilisateur
     ) {
         String expoPushToken =
-                utilisateur.getExpoPushToken();
+                getExpoPushToken(utilisateur);
 
-        if (
-                expoPushToken == null
-                        || expoPushToken.isBlank()
-        ) {
-            System.out.println(
-                    "Aucun token Expo pour l’utilisateur "
-                            + utilisateur.getIdUtilisateur()
-            );
-
+        if (expoPushToken == null) {
             return;
         }
 
@@ -181,10 +284,6 @@ public class NotificationService {
                 );
     }
 
-    /**
-     * Construit le titre affiché dans
-     * la notification Android.
-     */
     private String construireTitreAnnonce(
             AnnonceCours annonce
     ) {
@@ -215,9 +314,6 @@ public class NotificationService {
         };
     }
 
-    /**
-     * Construit le contenu de la notification.
-     */
     private String construireMessageAnnonce(
             AnnonceCours annonce
     ) {
@@ -233,24 +329,40 @@ public class NotificationService {
                 annonce.getCours() != null
                         && annonce.getCours()
                         .getTitre() != null
+                        && !annonce.getCours()
+                        .getTitre()
+                        .isBlank()
         ) {
             return "Une nouvelle information concerne le cours "
-                    + annonce.getCours().getTitre()
+                    + annonce.getCours()
+                    .getTitre()
+                    .trim()
                     + ".";
         }
 
         return "Une nouvelle information de cours est disponible.";
     }
 
-    /**
-     * Notification nouvelle activité
-     */
+    /* ====================================================================== */
+    /*                         NOUVELLE ACTIVITÉ                               */
+    /* ====================================================================== */
 
+    /**
+     * Notifie tous les adhérents validés
+     * lorsqu’une activité est publiée.
+     */
     @Transactional
     public void notifierNouvelleActivite(
             Activite activite
     ) {
-        if (activite == null) {
+        if (
+                activite == null
+                        || activite.getIdActivite() == null
+        ) {
+            System.out.println(
+                    "Notification ignorée : activité absente."
+            );
+
             return;
         }
 
@@ -271,58 +383,460 @@ public class NotificationService {
         }
 
         for (Utilisateur utilisateur : utilisateurs) {
-            if (utilisateur == null) {
-                continue;
-            }
-
-            String expoPushToken =
-                    utilisateur.getExpoPushToken();
-
             if (
-                    expoPushToken == null
-                            || expoPushToken.isBlank()
+                    utilisateur == null
+                            || utilisateur.getIdUtilisateur() == null
             ) {
                 continue;
             }
 
-            Map<String, Object> data =
-                    new HashMap<>();
-
-            data.put(
-                    "type",
-                    "ACTIVITE"
+            creerNotificationNouvelleActiviteSiAbsente(
+                    activite,
+                    utilisateur
             );
 
-            data.put(
-                    "activiteId",
-                    activite.getIdActivite()
+            envoyerPushNouvelleActivite(
+                    activite,
+                    utilisateur
             );
-
-            expoPushNotificationService
-                    .envoyerNotification(
-                            expoPushToken,
-                            "Nouvelle activité",
-                            construireMessageNouvelleActivite(
-                                    activite
-                            ),
-                            data
-                    );
         }
+    }
+
+    private void creerNotificationNouvelleActiviteSiAbsente(
+            Activite activite,
+            Utilisateur utilisateur
+    ) {
+        boolean existe =
+                notificationUtilisateurRepository
+                        .existsByUtilisateurIdUtilisateurAndTypeNotificationAndActiviteId(
+                                utilisateur.getIdUtilisateur(),
+                                TypeNotification.NOUVELLE_ACTIVITE,
+                                activite.getIdActivite()
+                        );
+
+        if (existe) {
+            return;
+        }
+
+        String message =
+                construireMessageNouvelleActivite(
+                        activite
+                );
+
+        NotificationUtilisateur notification =
+                NotificationUtilisateur.builder()
+                        .utilisateur(utilisateur)
+                        .typeNotification(
+                                TypeNotification.NOUVELLE_ACTIVITE
+                        )
+                        .titre("Nouvelle activité")
+                        .message(message)
+                        .titreCible(
+                                getTitreActivite(
+                                        activite
+                                )
+                        )
+                        .activiteId(
+                                activite.getIdActivite()
+                        )
+                        .estLue(false)
+                        .dateLecture(null)
+                        .build();
+
+        notificationUtilisateurRepository.save(
+                notification
+        );
+    }
+
+    private void envoyerPushNouvelleActivite(
+            Activite activite,
+            Utilisateur utilisateur
+    ) {
+        String expoPushToken =
+                getExpoPushToken(utilisateur);
+
+        if (expoPushToken == null) {
+            return;
+        }
+
+        Map<String, Object> data =
+                new HashMap<>();
+
+        data.put(
+                "type",
+                "NOUVELLE_ACTIVITE"
+        );
+
+        data.put(
+                "activiteId",
+                activite.getIdActivite()
+        );
+
+        expoPushNotificationService
+                .envoyerNotification(
+                        expoPushToken,
+                        "Nouvelle activité",
+                        construireMessageNouvelleActivite(
+                                activite
+                        ),
+                        data
+                );
     }
 
     private String construireMessageNouvelleActivite(
             Activite activite
     ) {
         String titre =
-                activite.getTitre();
+                getTitreActivite(activite);
 
-        if (
-                titre != null
-                        && !titre.isBlank()
-        ) {
-            return titre.trim();
+        return "Une nouvelle activité est disponible : "
+                + titre
+                + ".";
+    }
+
+    /* ====================================================================== */
+    /*                    VALIDATION D’UNE INSCRIPTION                         */
+    /* ====================================================================== */
+
+    /**
+     * Notifie le membre lorsque son inscription
+     * à une activité est validée.
+     */
+    @Transactional
+    public void notifierValidationInscriptionActivite(
+            InscriptionActivite inscription
+    ) {
+        if (!inscriptionValide(inscription)) {
+            System.out.println(
+                    "Notification de validation ignorée : "
+                            + "données incomplètes."
+            );
+
+            return;
         }
 
-        return "Une nouvelle activité est disponible.";
+        Utilisateur utilisateur =
+                inscription.getUtilisateur();
+
+        Activite activite =
+                inscription.getActivite();
+
+        creerNotificationValidationSiAbsente(
+                inscription,
+                utilisateur,
+                activite
+        );
+
+        envoyerPushValidationInscription(
+                inscription,
+                utilisateur,
+                activite
+        );
+    }
+
+    private void creerNotificationValidationSiAbsente(
+            InscriptionActivite inscription,
+            Utilisateur utilisateur,
+            Activite activite
+    ) {
+        boolean existe =
+                notificationUtilisateurRepository
+                        .existsByUtilisateurIdUtilisateurAndTypeNotificationAndInscriptionId(
+                                utilisateur.getIdUtilisateur(),
+                                TypeNotification.VALIDATION_INSCRIPTION,
+                                inscription.getIdInscription()
+                        );
+
+        if (existe) {
+            return;
+        }
+
+        NotificationUtilisateur notification =
+                NotificationUtilisateur.builder()
+                        .utilisateur(utilisateur)
+                        .typeNotification(
+                                TypeNotification.VALIDATION_INSCRIPTION
+                        )
+                        .titre("Inscription validée")
+                        .message(
+                                construireMessageValidationInscription(
+                                        activite
+                                )
+                        )
+                        .titreCible(
+                                getTitreActivite(
+                                        activite
+                                )
+                        )
+                        .activiteId(
+                                activite.getIdActivite()
+                        )
+                        .inscriptionId(
+                                inscription.getIdInscription()
+                        )
+                        .estLue(false)
+                        .dateLecture(null)
+                        .build();
+
+        notificationUtilisateurRepository.save(
+                notification
+        );
+    }
+
+    private void envoyerPushValidationInscription(
+            InscriptionActivite inscription,
+            Utilisateur utilisateur,
+            Activite activite
+    ) {
+        String expoPushToken =
+                getExpoPushToken(utilisateur);
+
+        if (expoPushToken == null) {
+            return;
+        }
+
+        Map<String, Object> data =
+                new HashMap<>();
+
+        data.put(
+                "type",
+                "VALIDATION_INSCRIPTION"
+        );
+
+        data.put(
+                "activiteId",
+                activite.getIdActivite()
+        );
+
+        data.put(
+                "inscriptionId",
+                inscription.getIdInscription()
+        );
+
+        expoPushNotificationService
+                .envoyerNotification(
+                        expoPushToken,
+                        "Inscription validée",
+                        construireMessageValidationInscription(
+                                activite
+                        ),
+                        data
+                );
+    }
+
+    private String construireMessageValidationInscription(
+            Activite activite
+    ) {
+        return "Votre inscription à « "
+                + getTitreActivite(activite)
+                + " » a été validée.";
+    }
+
+    /* ====================================================================== */
+    /*                       REFUS D’UNE INSCRIPTION                           */
+    /* ====================================================================== */
+
+    /**
+     * Notifie le membre lorsque son inscription
+     * à une activité est refusée.
+     */
+    @Transactional
+    public void notifierRefusInscriptionActivite(
+            InscriptionActivite inscription
+    ) {
+        if (!inscriptionValide(inscription)) {
+            System.out.println(
+                    "Notification de refus ignorée : "
+                            + "données incomplètes."
+            );
+
+            return;
+        }
+
+        Utilisateur utilisateur =
+                inscription.getUtilisateur();
+
+        Activite activite =
+                inscription.getActivite();
+
+        creerNotificationRefusSiAbsente(
+                inscription,
+                utilisateur,
+                activite
+        );
+
+        envoyerPushRefusInscription(
+                inscription,
+                utilisateur,
+                activite
+        );
+    }
+
+    private void creerNotificationRefusSiAbsente(
+            InscriptionActivite inscription,
+            Utilisateur utilisateur,
+            Activite activite
+    ) {
+        boolean existe =
+                notificationUtilisateurRepository
+                        .existsByUtilisateurIdUtilisateurAndTypeNotificationAndInscriptionId(
+                                utilisateur.getIdUtilisateur(),
+                                TypeNotification.REFUS_INSCRIPTION,
+                                inscription.getIdInscription()
+                        );
+
+        if (existe) {
+            return;
+        }
+
+        NotificationUtilisateur notification =
+                NotificationUtilisateur.builder()
+                        .utilisateur(utilisateur)
+                        .typeNotification(
+                                TypeNotification.REFUS_INSCRIPTION
+                        )
+                        .titre("Inscription non retenue")
+                        .message(
+                                construireMessageRefusInscription(
+                                        activite
+                                )
+                        )
+                        .titreCible(
+                                getTitreActivite(
+                                        activite
+                                )
+                        )
+                        .activiteId(
+                                activite.getIdActivite()
+                        )
+                        .inscriptionId(
+                                inscription.getIdInscription()
+                        )
+                        .estLue(false)
+                        .dateLecture(null)
+                        .build();
+
+        notificationUtilisateurRepository.save(
+                notification
+        );
+    }
+
+    private void envoyerPushRefusInscription(
+            InscriptionActivite inscription,
+            Utilisateur utilisateur,
+            Activite activite
+    ) {
+        String expoPushToken =
+                getExpoPushToken(utilisateur);
+
+        if (expoPushToken == null) {
+            return;
+        }
+
+        Map<String, Object> data =
+                new HashMap<>();
+
+        data.put(
+                "type",
+                "REFUS_INSCRIPTION"
+        );
+
+        data.put(
+                "activiteId",
+                activite.getIdActivite()
+        );
+
+        data.put(
+                "inscriptionId",
+                inscription.getIdInscription()
+        );
+
+        expoPushNotificationService
+                .envoyerNotification(
+                        expoPushToken,
+                        "Inscription non retenue",
+                        construireMessageRefusInscription(
+                                activite
+                        ),
+                        data
+                );
+    }
+
+    private String construireMessageRefusInscription(
+            Activite activite
+    ) {
+        return "Votre inscription à « "
+                + getTitreActivite(activite)
+                + " » n’a pas été acceptée.";
+    }
+
+    /* ====================================================================== */
+    /*                              OUTILS                                     */
+    /* ====================================================================== */
+
+    private boolean inscriptionValide(
+            InscriptionActivite inscription
+    ) {
+        return inscription != null
+                && inscription.getIdInscription() != null
+                && inscription.getUtilisateur() != null
+                && inscription.getUtilisateur()
+                .getIdUtilisateur() != null
+                && inscription.getActivite() != null
+                && inscription.getActivite()
+                .getIdActivite() != null;
+    }
+
+    private String getTitreActivite(
+            Activite activite
+    ) {
+        if (
+                activite != null
+                        && activite.getTitre() != null
+                        && !activite.getTitre()
+                        .isBlank()
+        ) {
+            return activite.getTitre().trim();
+        }
+
+        return "Activité du club";
+    }
+
+    private String getExpoPushToken(
+            Utilisateur utilisateur
+    ) {
+        if (utilisateur == null) {
+            return null;
+        }
+
+        String expoPushToken =
+                utilisateur.getExpoPushToken();
+
+        if (
+                expoPushToken == null
+                        || expoPushToken.isBlank()
+        ) {
+            System.out.println(
+                    "Aucun token Expo pour l’utilisateur "
+                            + utilisateur.getIdUtilisateur()
+            );
+
+            return null;
+        }
+
+        return expoPushToken.trim();
+    }
+
+    private String texteOuNull(
+            String value
+    ) {
+        if (
+                value == null
+                        || value.isBlank()
+        ) {
+            return null;
+        }
+
+        return value.trim();
     }
 }

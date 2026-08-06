@@ -116,6 +116,14 @@ public class SecurityConfig {
                         ).authenticated()
 
                         /*
+                        *Notifications générales
+                         */
+
+                        .requestMatchers(
+                                "/api/notifications/**"
+                        ).authenticated()
+
+                        /*
                          * Espace adhérent.
                          */
                         .requestMatchers(

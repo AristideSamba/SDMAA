@@ -22,13 +22,24 @@ import java.util.List;
 @RequiredArgsConstructor
 public class InscriptionActiviteService {
 
-    private final InscriptionActiviteRepository inscriptionRepository;
-    private final UtilisateurRepository utilisateurRepository;
-    private final ActiviteRepository activiteRepository;
-    private final UtilisateurService utilisateurService;
+    private final InscriptionActiviteRepository
+            inscriptionRepository;
+
+    private final UtilisateurRepository
+            utilisateurRepository;
+
+    private final ActiviteRepository
+            activiteRepository;
+
+    private final UtilisateurService
+            utilisateurService;
+
+    private final NotificationService
+            notificationService;
 
     /**
-     * Inscription d'un utilisateur précis à une activité.
+     * Inscription d'un utilisateur précis
+     * à une activité.
      */
     @Transactional
     public InscriptionActivite create(
@@ -36,21 +47,23 @@ public class InscriptionActiviteService {
             Long idActivite,
             String commentaire
     ) {
-        Utilisateur utilisateur = utilisateurRepository
-                .findById(idUtilisateur)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Utilisateur non trouvé"
-                        )
-                );
+        Utilisateur utilisateur =
+                utilisateurRepository
+                        .findById(idUtilisateur)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Utilisateur non trouvé"
+                                )
+                        );
 
-        Activite activite = activiteRepository
-                .findById(idActivite)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Activité non trouvée"
-                        )
-                );
+        Activite activite =
+                activiteRepository
+                        .findById(idActivite)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Activité non trouvée"
+                                )
+                        );
 
         boolean dejaInscrit =
                 inscriptionRepository
@@ -66,11 +79,14 @@ public class InscriptionActiviteService {
         }
 
         /*
-         * Empêche l'inscription à une activité déjà passée.
+         * Empêche l'inscription à une activité
+         * déjà passée.
          */
         if (
-                activite.getDateActivite() != null &&
-                        activite.getDateActivite().isBefore(LocalDate.now())
+                activite.getDateActivite() != null
+                        && activite
+                        .getDateActivite()
+                        .isBefore(LocalDate.now())
         ) {
             throw new BusinessException(
                     "Impossible de s'inscrire à une activité déjà passée"
@@ -78,8 +94,10 @@ public class InscriptionActiviteService {
         }
 
         boolean activitePayante =
-                activite.getPrix() != null &&
-                        activite.getPrix().doubleValue() > 0;
+                activite.getPrix() != null
+                        && activite
+                        .getPrix()
+                        .doubleValue() > 0;
 
         String statutPaiement =
                 activitePayante
@@ -93,7 +111,9 @@ public class InscriptionActiviteService {
 
         String commentaireNettoye =
                 commentaire != null
-                        ? XssSanitizer.clean(commentaire)
+                        ? XssSanitizer.clean(
+                        commentaire
+                )
                         : null;
 
         InscriptionActivite inscription =
@@ -101,13 +121,23 @@ public class InscriptionActiviteService {
                         .utilisateur(utilisateur)
                         .activite(activite)
                         .dateDemande(LocalDate.now())
-                        .commentaire(commentaireNettoye)
-                        .statutInscription("en_attente")
-                        .statutPaiement(statutPaiement)
-                        .modePaiement(modePaiement)
+                        .commentaire(
+                                commentaireNettoye
+                        )
+                        .statutInscription(
+                                "en_attente"
+                        )
+                        .statutPaiement(
+                                statutPaiement
+                        )
+                        .modePaiement(
+                                modePaiement
+                        )
                         .build();
 
-        return inscriptionRepository.save(inscription);
+        return inscriptionRepository.save(
+                inscription
+        );
     }
 
     /**
@@ -118,7 +148,9 @@ public class InscriptionActiviteService {
         return inscriptionRepository
                 .findAll()
                 .stream()
-                .map(InscriptionActiviteMapper::toDTO)
+                .map(
+                        InscriptionActiviteMapper::toDTO
+                )
                 .toList();
     }
 
@@ -126,7 +158,9 @@ public class InscriptionActiviteService {
      * Une inscription par son identifiant.
      */
     @Transactional(readOnly = true)
-    public InscriptionActiviteDTO getById(Long id) {
+    public InscriptionActiviteDTO getById(
+            Long id
+    ) {
         InscriptionActivite inscription =
                 getEntityById(id);
 
@@ -139,12 +173,10 @@ public class InscriptionActiviteService {
      * Inscriptions d'un utilisateur précis.
      */
     @Transactional(readOnly = true)
-    public List<InscriptionActiviteDTO> getByUtilisateur(
+    public List<InscriptionActiviteDTO>
+    getByUtilisateur(
             Long idUtilisateur
     ) {
-        /*
-         * Vérifie d'abord que l'utilisateur existe.
-         */
         utilisateurRepository
                 .findById(idUtilisateur)
                 .orElseThrow(() ->
@@ -158,7 +190,9 @@ public class InscriptionActiviteService {
                         idUtilisateur
                 )
                 .stream()
-                .map(InscriptionActiviteMapper::toDTO)
+                .map(
+                        InscriptionActiviteMapper::toDTO
+                )
                 .toList();
     }
 
@@ -166,7 +200,8 @@ public class InscriptionActiviteService {
      * Inscription de l'utilisateur connecté.
      */
     @Transactional
-    public InscriptionActivite createForCurrentUser(
+    public InscriptionActivite
+    createForCurrentUser(
             Long idActivite,
             String commentaire
     ) {
@@ -191,7 +226,8 @@ public class InscriptionActiviteService {
      * Inscriptions de l'utilisateur connecté.
      */
     @Transactional(readOnly = true)
-    public List<InscriptionActiviteDTO> getMyInscriptions() {
+    public List<InscriptionActiviteDTO>
+    getMyInscriptions() {
         Utilisateur utilisateur =
                 utilisateurService
                         .getUtilisateurConnecte();
@@ -223,7 +259,9 @@ public class InscriptionActiviteService {
 
         return inscriptions
                 .stream()
-                .map(InscriptionActiviteMapper::toDTO)
+                .map(
+                        InscriptionActiviteMapper::toDTO
+                )
                 .toList();
     }
 
@@ -231,13 +269,16 @@ public class InscriptionActiviteService {
      * Validation d'une inscription.
      */
     @Transactional
-    public InscriptionActivite valider(Long id) {
+    public InscriptionActivite valider(
+            Long id
+    ) {
         InscriptionActivite inscription =
                 getEntityById(id);
 
         if (
                 !"en_attente".equalsIgnoreCase(
-                        inscription.getStatutInscription()
+                        inscription
+                                .getStatutInscription()
                 )
         ) {
             throw new BusinessException(
@@ -245,33 +286,69 @@ public class InscriptionActiviteService {
             );
         }
 
-        inscription.setStatutInscription("validee");
+        inscription.setStatutInscription(
+                "validee"
+        );
+
         inscription.setDateValidationAdmin(
                 LocalDate.now()
         );
 
         if (
                 "en_attente".equalsIgnoreCase(
-                        inscription.getStatutPaiement()
+                        inscription
+                                .getStatutPaiement()
                 )
         ) {
-            inscription.setStatutPaiement("paye");
+            inscription.setStatutPaiement(
+                    "paye"
+            );
         }
 
-        return inscriptionRepository.save(inscription);
+        InscriptionActivite
+                inscriptionValidee =
+                inscriptionRepository.save(
+                        inscription
+                );
+
+        /*
+         * Une erreur de push ne doit pas
+         * empêcher la validation métier.
+         */
+        try {
+            notificationService
+                    .notifierValidationInscriptionActivite(
+                            inscriptionValidee
+                    );
+        } catch (Exception exception) {
+            System.err.println(
+                    "Erreur pendant la notification "
+                            + "de validation de l'inscription "
+                            + inscriptionValidee.getIdInscription()
+                            + " : "
+                            + exception.getMessage()
+            );
+
+            exception.printStackTrace();
+        }
+
+        return inscriptionValidee;
     }
 
     /**
      * Refus d'une inscription.
      */
     @Transactional
-    public InscriptionActivite refuser(Long id) {
+    public InscriptionActivite refuser(
+            Long id
+    ) {
         InscriptionActivite inscription =
                 getEntityById(id);
 
         if (
                 !"en_attente".equalsIgnoreCase(
-                        inscription.getStatutInscription()
+                        inscription
+                                .getStatutInscription()
                 )
         ) {
             throw new BusinessException(
@@ -279,29 +356,65 @@ public class InscriptionActiviteService {
             );
         }
 
-        inscription.setStatutInscription("refusee");
+        inscription.setStatutInscription(
+                "refusee"
+        );
+
         inscription.setDateValidationAdmin(
                 LocalDate.now()
         );
 
-        return inscriptionRepository.save(inscription);
+        InscriptionActivite
+                inscriptionRefusee =
+                inscriptionRepository.save(
+                        inscription
+                );
+
+        /*
+         * Une erreur de push ne doit pas
+         * empêcher le refus de l'inscription.
+         */
+        try {
+            notificationService
+                    .notifierRefusInscriptionActivite(
+                            inscriptionRefusee
+                    );
+        } catch (Exception exception) {
+            System.err.println(
+                    "Erreur pendant la notification "
+                            + "de refus de l'inscription "
+                            + inscriptionRefusee.getIdInscription()
+                            + " : "
+                            + exception.getMessage()
+            );
+
+            exception.printStackTrace();
+        }
+
+        return inscriptionRefusee;
     }
 
     /**
      * Suppression d'une inscription.
      */
     @Transactional
-    public void delete(Long id) {
+    public void delete(
+            Long id
+    ) {
         InscriptionActivite inscription =
                 getEntityById(id);
 
-        inscriptionRepository.delete(inscription);
+        inscriptionRepository.delete(
+                inscription
+        );
     }
 
     /**
      * Recherche interne d'une inscription.
      */
-    private InscriptionActivite getEntityById(Long id) {
+    private InscriptionActivite getEntityById(
+            Long id
+    ) {
         return inscriptionRepository
                 .findById(id)
                 .orElseThrow(() ->
