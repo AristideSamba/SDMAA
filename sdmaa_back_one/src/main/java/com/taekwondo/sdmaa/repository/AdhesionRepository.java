@@ -37,4 +37,11 @@ public interface AdhesionRepository
     List<Utilisateur> findUtilisateursActifsParCours(
             @Param("idCours") Long idCours
     );
+
+    @Query("""
+        SELECT DISTINCT adhesion.utilisateur
+        FROM Adhesion adhesion
+        WHERE LOWER(adhesion.statutAdhesion) = 'validee'
+        """)
+    List<Utilisateur> findUtilisateursAvecAdhesionValidee();
 }

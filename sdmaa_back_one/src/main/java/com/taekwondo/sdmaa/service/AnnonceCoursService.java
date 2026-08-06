@@ -23,9 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+
 
 @Service
 @RequiredArgsConstructor
@@ -40,6 +39,7 @@ public class AnnonceCoursService {
     private final NotificationCoursUtilisateurRepository notificationRepository;
     private final NotificationCoursUtilisateurMapper notificationMapper;
     private final ExpoPushNotificationService expoPushNotificationService;
+    private final NotificationService notificationService;
 
     /**
      * Crée une annonce pour un cours.
@@ -48,18 +48,23 @@ public class AnnonceCoursService {
             Long idCours,
             AnnonceCours annonce
     ) {
-        Cours cours = coursRepository.findById(idCours)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Cours non trouvé"
-                        )
-                );
+        Cours cours =
+                coursRepository.findById(idCours)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Cours non trouvé"
+                                )
+                        );
 
         annonce.setCours(cours);
-        annonce.setDateCreation(LocalDateTime.now());
+        annonce.setDateCreation(
+                LocalDateTime.now()
+        );
 
         AnnonceCours annonceEnregistree =
-                annonceRepository.save(annonce);
+                annonceRepository.save(
+                        annonce
+                );
 
         List<Utilisateur> utilisateurs =
                 adhesionRepository
@@ -67,7 +72,7 @@ public class AnnonceCoursService {
                                 idCours
                         );
 
-        creerEtEnvoyerNotifications(
+        notificationService.notifierAnnonceCours(
                 annonceEnregistree,
                 utilisateurs
         );
@@ -75,115 +80,7 @@ public class AnnonceCoursService {
         return annonceEnregistree;
     }
 
-    private void creerEtEnvoyerNotifications(
-            AnnonceCours annonce,
-            List<Utilisateur> utilisateurs
-    ) {
-        if (
-                utilisateurs == null
-                        || utilisateurs.isEmpty()
-        ) {
-            System.out.println(
-                    "Aucun utilisateur concerné pour le cours "
-                            + annonce.getCours().getIdCours()
-            );
 
-            return;
-        }
-
-        List<NotificationCoursUtilisateur>
-                notificationsACreer =
-                new ArrayList<>();
-
-        for (Utilisateur utilisateur : utilisateurs) {
-
-            boolean existe =
-                    notificationRepository
-                            .existsByAnnonceCoursIdAnnonceAndUtilisateurIdUtilisateur(
-                                    annonce.getIdAnnonce(),
-                                    utilisateur.getIdUtilisateur()
-                            );
-
-            if (!existe) {
-                NotificationCoursUtilisateur notification =
-                        new NotificationCoursUtilisateur();
-
-                notification.setAnnonceCours(annonce);
-                notification.setUtilisateur(utilisateur);
-                notification.setLu(false);
-                notification.setDateLecture(null);
-
-                notificationsACreer.add(notification);
-            }
-
-            String expoPushToken =
-                    utilisateur.getExpoPushToken();
-
-            if (
-                    expoPushToken == null
-                            || expoPushToken.isBlank()
-            ) {
-                continue;
-            }
-
-            Map<String, Object> data =
-                    new HashMap<>();
-
-            data.put(
-                    "type",
-                    "ANNONCE_COURS"
-            );
-
-            data.put(
-                    "annonceId",
-                    annonce.getIdAnnonce()
-            );
-
-            data.put(
-                    "coursId",
-                    annonce.getCours().getIdCours()
-            );
-
-            expoPushNotificationService
-                    .envoyerNotification(
-                            expoPushToken,
-                            construireTitreNotification(
-                                    annonce
-                            ),
-                            annonce.getMessage(),
-                            data
-                    );
-        }
-
-        if (!notificationsACreer.isEmpty()) {
-            notificationRepository.saveAll(
-                    notificationsACreer
-            );
-        }
-    }
-
-    private String construireTitreNotification(
-            AnnonceCours annonce
-    ) {
-        if (annonce.getTypeAnnonce() == null) {
-            return "Nouvelle annonce de cours";
-        }
-
-        return switch (
-                annonce.getTypeAnnonce()
-                        .trim()
-                        .toUpperCase()
-                ) {
-            case "ANNULATION" ->
-                    "Cours annulé";
-
-            case "REPORT" ->
-                    "Cours reporté";
-
-            default ->
-                    "Information du club";
-        };
-    }
 
     /**
      * Retourne toutes les annonces.

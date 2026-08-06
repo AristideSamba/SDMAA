@@ -23,11 +23,21 @@ public class ActiviteService {
             "sdmaa/activites";
 
     private final ActiviteRepository repository;
-    private final CloudinaryImageService cloudinaryImageService;
+
+    private final CloudinaryImageService
+            cloudinaryImageService;
+
+    private final NotificationService
+            notificationService;
 
     /**
-     * Créer une activité sans image.
-     * L'image sera envoyée ensuite avec une route dédiée.
+     * Crée une activité sans image.
+     *
+     * L'image sera envoyée ensuite avec
+     * la route dédiée.
+     *
+     * La notification n'est pas encore envoyée ici,
+     * car l'activité ne possède pas encore son image.
      */
     public ActiviteDTO create(
             Activite activite
@@ -45,6 +55,9 @@ public class ActiviteService {
         );
     }
 
+    /**
+     * Retourne toutes les activités.
+     */
     @Transactional(readOnly = true)
     public List<ActiviteDTO> getAll() {
         return repository.findAll()
@@ -53,26 +66,41 @@ public class ActiviteService {
                 .toList();
     }
 
+    /**
+     * Retourne une activité par son identifiant.
+     */
     @Transactional(readOnly = true)
-    public ActiviteDTO getById(Long id) {
+    public ActiviteDTO getById(
+            Long id
+    ) {
         return ActiviteMapper.toDTO(
                 getEntityById(id)
         );
     }
 
+    /**
+     * Retourne directement l'entité Activite.
+     */
     @Transactional(readOnly = true)
-    public Activite getEntityById(Long id) {
+    public Activite getEntityById(
+            Long id
+    ) {
         return repository.findById(id)
                 .orElseThrow(
-                        () -> new ResourceNotFoundException(
-                                "Activité non trouvée avec l'id : " + id
-                        )
+                        () ->
+                                new ResourceNotFoundException(
+                                        "Activité non trouvée avec l'id : "
+                                                + id
+                                )
                 );
     }
 
     /**
-     * Modifier les informations d'une activité.
+     * Modifie les informations d'une activité.
+     *
      * L'image n'est pas modifiée ici.
+     * Aucune notification "nouvelle activité"
+     * n'est renvoyée pendant une modification.
      */
     public ActiviteDTO update(
             Long id,
@@ -148,20 +176,68 @@ public class ActiviteService {
     }
 
     /**
-     * Ajouter ou remplacer l'image d'une activité.
+     * Ajoute ou remplace l'image d'une activité.
+     *
+     * La notification "Nouvelle activité"
+     * est envoyée uniquement lors du premier
+     * ajout d'image.
+     *
+     * Si l'image est remplacée plus tard,
+     * aucune nouvelle notification n'est envoyée.
      */
     public ActiviteDTO updateImage(
             Long id,
             MultipartFile image
     ) {
+        if (
+                image == null
+                        || image.isEmpty()
+        ) {
+            throw new IllegalArgumentException(
+                    "L'image de l'activité est obligatoire."
+            );
+        }
+
         Activite activite =
                 getEntityById(id);
 
+        String ancienneUrl =
+                activite.getImageActivite();
+
+        String ancienPublicId =
+                activite.getImagePublicId();
+
+        /*
+         * Une première image signifie que l'activité
+         * vient juste d'être entièrement créée.
+         */
+        boolean premiereImage =
+                (
+                        ancienneUrl == null
+                                || ancienneUrl.isBlank()
+                )
+                        &&
+                        (
+                                ancienPublicId == null
+                                        || ancienPublicId.isBlank()
+                        );
+
+        /*
+         * On envoie d'abord la nouvelle image.
+         * Si Cloudinary échoue, l'ancienne image
+         * reste disponible.
+         */
         Map<String, String> resultat =
                 cloudinaryImageService.uploader(
                         image,
                         DOSSIER_CLOUDINARY
                 );
+
+        if (resultat == null) {
+            throw new IllegalStateException(
+                    "Cloudinary n'a retourné aucun résultat."
+            );
+        }
 
         String nouvelleUrl =
                 resultat.get("url");
@@ -169,8 +245,16 @@ public class ActiviteService {
         String nouveauPublicId =
                 resultat.get("publicId");
 
-        String ancienPublicId =
-                activite.getImagePublicId();
+        if (
+                nouvelleUrl == null
+                        || nouvelleUrl.isBlank()
+                        || nouveauPublicId == null
+                        || nouveauPublicId.isBlank()
+        ) {
+            throw new IllegalStateException(
+                    "Cloudinary n'a pas retourné une URL ou un publicId valide."
+            );
+        }
 
         activite.setImageActivite(
                 nouvelleUrl
@@ -183,6 +267,10 @@ public class ActiviteService {
         Activite activiteModifiee =
                 repository.save(activite);
 
+        /*
+         * On supprime l'ancienne image seulement
+         * après avoir enregistré la nouvelle.
+         */
         if (
                 ancienPublicId != null
                         && !ancienPublicId.isBlank()
@@ -190,9 +278,46 @@ public class ActiviteService {
                         nouveauPublicId
                 )
         ) {
-            cloudinaryImageService.supprimer(
-                    ancienPublicId
-            );
+            try {
+                cloudinaryImageService.supprimer(
+                        ancienPublicId
+                );
+            } catch (Exception exception) {
+                /*
+                 * La nouvelle image est déjà enregistrée.
+                 * Une erreur de suppression de l'ancienne
+                 * image ne doit pas annuler l'opération.
+                 */
+                System.err.println(
+                        "Impossible de supprimer l'ancienne image Cloudinary : "
+                                + exception.getMessage()
+                );
+            }
+        }
+
+        /*
+         * La notification est envoyée uniquement
+         * à la fin de la création complète :
+         * informations + image.
+         */
+        if (premiereImage) {
+            try {
+                notificationService
+                        .notifierNouvelleActivite(
+                                activiteModifiee
+                        );
+            } catch (Exception exception) {
+                /*
+                 * Une erreur de notification ne doit pas
+                 * empêcher l'enregistrement de l'activité.
+                 */
+                System.err.println(
+                        "Erreur pendant la notification de la nouvelle activité : "
+                                + exception.getMessage()
+                );
+
+                exception.printStackTrace();
+            }
         }
 
         return ActiviteMapper.toDTO(
@@ -201,9 +326,11 @@ public class ActiviteService {
     }
 
     /**
-     * Supprimer uniquement l'image d'une activité.
+     * Supprime uniquement l'image d'une activité.
      */
-    public ActiviteDTO deleteImage(Long id) {
+    public ActiviteDTO deleteImage(
+            Long id
+    ) {
         Activite activite =
                 getEntityById(id);
 
@@ -231,9 +358,11 @@ public class ActiviteService {
     }
 
     /**
-     * Supprimer une activité et son image Cloudinary.
+     * Supprime une activité et son image Cloudinary.
      */
-    public void delete(Long id) {
+    public void delete(
+            Long id
+    ) {
         Activite activite =
                 getEntityById(id);
 
@@ -252,6 +381,10 @@ public class ActiviteService {
         repository.delete(activite);
     }
 
+    /**
+     * Nettoie les champs texte avant
+     * l'enregistrement d'une activité.
+     */
     private void sanitizeActivite(
             Activite activite
     ) {
@@ -286,7 +419,12 @@ public class ActiviteService {
         );
     }
 
-    private String clean(String value) {
+    /**
+     * Nettoie une valeur texte.
+     */
+    private String clean(
+            String value
+    ) {
         if (value == null) {
             return null;
         }
@@ -296,6 +434,9 @@ public class ActiviteService {
         );
     }
 
+    /**
+     * Nettoie une valeur facultative.
+     */
     private String cleanOptional(
             String value
     ) {
