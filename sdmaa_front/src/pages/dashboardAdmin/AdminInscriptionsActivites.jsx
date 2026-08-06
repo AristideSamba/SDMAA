@@ -5,6 +5,7 @@ import {
   CalendarDays,
   Check,
   Clock3,
+  Eye,
   Mail,
   MapPin,
   Search,
@@ -15,6 +16,14 @@ import {
 
 const FALLBACK_IMAGE =
   "https://plus.unsplash.com/premium_photo-1663076205303-d6cd83269893?q=80&w=1041&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
+
+const API_URL = String(
+  import.meta.env.VITE_API_URL ||
+    "https://sdmaa.onrender.com/api"
+).replace(/\/$/, "");
+
+const getInscriptionId = (item) =>
+  item?.idInscription ?? item?.id ?? null;
 
 const formatDate = (date) => {
   if (!date) return "—";
@@ -83,6 +92,7 @@ function AdminInscriptionsActivites() {
   const [statutFilter, setStatutFilter] = useState("TOUS");
   const [loading, setLoading] = useState(true);
   const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [selectedInscription, setSelectedInscription] = useState(null);
   const [error, setError] = useState("");
 
   const apiFetch = async (url, options = {}) => {
@@ -109,7 +119,7 @@ function AdminInscriptionsActivites() {
       setError("");
 
       const res = await apiFetch(
-        "http://localhost:8080/api/inscriptions-activites"
+        `${API_URL}/inscriptions-activites`
       );
 
       if (!res) return;
@@ -122,7 +132,7 @@ function AdminInscriptionsActivites() {
         );
       }
 
-      setInscriptions(data || []);
+      setInscriptions(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -136,7 +146,7 @@ function AdminInscriptionsActivites() {
       setActionLoadingId(inscriptionId);
 
       const res = await apiFetch(
-        `http://localhost:8080/api/inscriptions-activites/${inscriptionId}/valider`,
+        `${API_URL}/inscriptions-activites/${inscriptionId}/valider`,
         { method: "PUT" }
       );
 
@@ -152,7 +162,7 @@ function AdminInscriptionsActivites() {
 
       setInscriptions((current) =>
         current.map((item) =>
-          item.id === inscriptionId
+          getInscriptionId(item) === inscriptionId
             ? {
               ...item,
               statutInscription: "validee",
@@ -179,7 +189,7 @@ function AdminInscriptionsActivites() {
       setActionLoadingId(inscriptionId);
 
       const res = await apiFetch(
-        `http://localhost:8080/api/inscriptions-activites/${inscriptionId}/refuser`,
+        `${API_URL}/inscriptions-activites/${inscriptionId}/refuser`,
         { method: "PUT" }
       );
 
@@ -195,7 +205,7 @@ function AdminInscriptionsActivites() {
 
       setInscriptions((current) =>
         current.map((item) =>
-          item.id === inscriptionId
+          getInscriptionId(item) === inscriptionId
             ? {
               ...item,
               statutInscription: "refusee",
@@ -375,12 +385,13 @@ function AdminInscriptionsActivites() {
   const prenom = item.utilisateurPrenom || "";
   const email = item.utilisateurEmail || "Email non renseigné";
 
-  const isActionLoading = actionLoadingId === item.id;
+  const inscriptionId = getInscriptionId(item);
+  const isActionLoading = actionLoadingId === inscriptionId;
   const statutVariant = getStatutVariant(item.statutInscription);
 
   return (
                 <article
-  key={item.id}
+  key={inscriptionId ?? `${item.activiteId}-${item.utilisateurId}`}
   className="rounded-3xl border border-black/5 bg-white p-4 shadow-[0_6px_20px_rgba(0,0,0,0.04)] transition hover:shadow-[0_10px_25px_rgba(0,0,0,0.08)]"
 >
   <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -454,8 +465,21 @@ function AdminInscriptionsActivites() {
     <div className="flex shrink-0 flex-wrap items-center gap-3 xl:justify-end">
       <button
         type="button"
-        disabled={isActionLoading || statutVariant !== "attente"}
-        onClick={() => validerInscription(item.id)}
+        onClick={() => setSelectedInscription(item)}
+        className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-black/10 bg-white px-4 py-2.5 text-sm font-medium text-gray-800 transition hover:bg-gray-50"
+      >
+        <Eye size={15} />
+        Voir
+      </button>
+
+      <button
+        type="button"
+        disabled={
+          !inscriptionId ||
+          isActionLoading ||
+          statutVariant !== "attente"
+        }
+        onClick={() => inscriptionId && validerInscription(inscriptionId)}
         className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-gray-950 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
       >
         <Check size={15} />
@@ -464,8 +488,12 @@ function AdminInscriptionsActivites() {
 
       <button
         type="button"
-        disabled={isActionLoading || statutVariant !== "attente"}
-        onClick={() => refuserInscription(item.id)}
+        disabled={
+          !inscriptionId ||
+          isActionLoading ||
+          statutVariant !== "attente"
+        }
+        onClick={() => inscriptionId && refuserInscription(inscriptionId)}
         className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-red-100 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
       >
         <X size={15} />
@@ -483,7 +511,207 @@ function AdminInscriptionsActivites() {
           </div>
         )}
       </section>
+
+      {selectedInscription && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="inscription-detail-title"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setSelectedInscription(null);
+            }
+          }}
+        >
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[30px] bg-white p-6 shadow-2xl sm:p-8">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
+                  Détail de la demande
+                </p>
+
+                <h2
+                  id="inscription-detail-title"
+                  className="mt-2 text-2xl font-semibold text-gray-950"
+                >
+                  {selectedInscription.activiteTitre ||
+                    "Inscription à une activité"}
+                </h2>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedInscription(null)}
+                className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-2xl border border-black/10 text-gray-600 transition hover:bg-gray-50"
+                aria-label="Fermer le détail"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <DetailItem
+                label="Adhérent"
+                value={
+                  [
+                    selectedInscription.utilisateurPrenom,
+                    selectedInscription.utilisateurNom,
+                  ]
+                    .filter(Boolean)
+                    .join(" ") || "Non renseigné"
+                }
+              />
+
+              <DetailItem
+                label="Email"
+                value={
+                  selectedInscription.utilisateurEmail ||
+                  "Non renseigné"
+                }
+              />
+
+              <DetailItem
+                label="Date de demande"
+                value={formatDate(
+                  selectedInscription.dateDemande
+                )}
+              />
+
+              <DetailItem
+                label="Statut"
+                value={getStatutLabel(
+                  selectedInscription.statutInscription
+                )}
+              />
+
+              <DetailItem
+                label="Date de l’activité"
+                value={formatDate(
+                  selectedInscription.activiteDate
+                )}
+              />
+
+              <DetailItem
+                label="Lieu"
+                value={
+                  selectedInscription.activiteLieu ||
+                  selectedInscription.lieu ||
+                  "Non renseigné"
+                }
+              />
+
+              <DetailItem
+                label="Paiement"
+                value={
+                  selectedInscription.statutPaiement ||
+                  "Non renseigné"
+                }
+              />
+
+              <DetailItem
+                label="Mode de paiement"
+                value={
+                  selectedInscription.modePaiement ||
+                  "Non renseigné"
+                }
+              />
+            </div>
+
+            <div className="mt-5 rounded-3xl bg-gray-50 p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">
+                Commentaire
+              </p>
+
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-gray-700">
+                {selectedInscription.commentaire ||
+                  "Aucun commentaire."}
+              </p>
+            </div>
+
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                onClick={() =>
+                  setSelectedInscription(null)
+                }
+                className="cursor-pointer rounded-2xl border border-black/10 bg-white px-5 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+              >
+                Fermer
+              </button>
+
+              {getStatutVariant(
+                selectedInscription.statutInscription
+              ) === "attente" && (
+                <>
+                  <button
+                    type="button"
+                    disabled={
+                      actionLoadingId ===
+                      getInscriptionId(
+                        selectedInscription
+                      )
+                    }
+                    onClick={async () => {
+                      const id = getInscriptionId(
+                        selectedInscription
+                      );
+
+                      if (!id) return;
+
+                      await refuserInscription(id);
+                      setSelectedInscription(null);
+                    }}
+                    className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-red-100 bg-red-50 px-5 py-3 text-sm font-medium text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <X size={16} />
+                    Refuser
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={
+                      actionLoadingId ===
+                      getInscriptionId(
+                        selectedInscription
+                      )
+                    }
+                    onClick={async () => {
+                      const id = getInscriptionId(
+                        selectedInscription
+                      );
+
+                      if (!id) return;
+
+                      await validerInscription(id);
+                      setSelectedInscription(null);
+                    }}
+                    className="inline-flex cursor-pointer items-center gap-2 rounded-2xl bg-gray-950 px-5 py-3 text-sm font-medium text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Check size={16} />
+                    Valider
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </section>
+  );
+}
+
+function DetailItem({ label, value }) {
+  return (
+    <div className="rounded-2xl border border-black/5 bg-gray-50 p-4">
+      <p className="text-xs font-medium uppercase tracking-[0.14em] text-gray-400">
+        {label}
+      </p>
+
+      <p className="mt-2 break-words text-sm font-medium text-gray-800">
+        {value}
+      </p>
+    </div>
   );
 }
 

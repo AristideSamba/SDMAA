@@ -839,4 +839,184 @@ public class NotificationService {
 
         return value.trim();
     }
+
+    @Transactional
+    public void notifierRappelActiviteJ3(
+            InscriptionActivite inscription
+    ) {
+        if (!inscriptionValide(inscription)) {
+            return;
+        }
+
+        Utilisateur utilisateur =
+                inscription.getUtilisateur();
+
+        Activite activite =
+                inscription.getActivite();
+
+        boolean existe =
+                notificationUtilisateurRepository
+                        .existsByUtilisateurIdUtilisateurAndTypeNotificationAndActiviteId(
+                                utilisateur.getIdUtilisateur(),
+                                TypeNotification.RAPPEL_ACTIVITE_J3,
+                                activite.getIdActivite()
+                        );
+
+        if (existe) {
+            return;
+        }
+
+        String titre =
+                "Rappel d’activité";
+
+        String message =
+                "Votre activité « "
+                        + getTitreActivite(activite)
+                        + " » aura lieu dans 3 jours.";
+
+        NotificationUtilisateur notification =
+                NotificationUtilisateur.builder()
+                        .utilisateur(utilisateur)
+                        .typeNotification(
+                                TypeNotification.RAPPEL_ACTIVITE_J3
+                        )
+                        .titre(titre)
+                        .message(message)
+                        .titreCible(
+                                getTitreActivite(activite)
+                        )
+                        .activiteId(
+                                activite.getIdActivite()
+                        )
+                        .inscriptionId(
+                                inscription.getIdInscription()
+                        )
+                        .estLue(false)
+                        .dateLecture(null)
+                        .build();
+
+        notificationUtilisateurRepository.save(
+                notification
+        );
+
+        envoyerPushRappelActivite(
+                utilisateur,
+                activite,
+                inscription,
+                "RAPPEL_ACTIVITE_J3",
+                titre,
+                message
+        );
+    }
+
+    @Transactional
+    public void notifierRappelActiviteH3(
+            InscriptionActivite inscription
+    ) {
+        if (!inscriptionValide(inscription)) {
+            return;
+        }
+
+        Utilisateur utilisateur =
+                inscription.getUtilisateur();
+
+        Activite activite =
+                inscription.getActivite();
+
+        boolean existe =
+                notificationUtilisateurRepository
+                        .existsByUtilisateurIdUtilisateurAndTypeNotificationAndActiviteId(
+                                utilisateur.getIdUtilisateur(),
+                                TypeNotification.RAPPEL_ACTIVITE_H3,
+                                activite.getIdActivite()
+                        );
+
+        if (existe) {
+            return;
+        }
+
+        String titre =
+                "Votre activité commence bientôt";
+
+        String message =
+                "Votre activité « "
+                        + getTitreActivite(activite)
+                        + " » commence dans 3 heures.";
+
+        NotificationUtilisateur notification =
+                NotificationUtilisateur.builder()
+                        .utilisateur(utilisateur)
+                        .typeNotification(
+                                TypeNotification.RAPPEL_ACTIVITE_H3
+                        )
+                        .titre(titre)
+                        .message(message)
+                        .titreCible(
+                                getTitreActivite(activite)
+                        )
+                        .activiteId(
+                                activite.getIdActivite()
+                        )
+                        .inscriptionId(
+                                inscription.getIdInscription()
+                        )
+                        .estLue(false)
+                        .dateLecture(null)
+                        .build();
+
+        notificationUtilisateurRepository.save(
+                notification
+        );
+
+        envoyerPushRappelActivite(
+                utilisateur,
+                activite,
+                inscription,
+                "RAPPEL_ACTIVITE_H3",
+                titre,
+                message
+        );
+    }
+
+    private void envoyerPushRappelActivite(
+            Utilisateur utilisateur,
+            Activite activite,
+            InscriptionActivite inscription,
+            String type,
+            String titre,
+            String message
+    ) {
+        String expoPushToken =
+                getExpoPushToken(utilisateur);
+
+        if (expoPushToken == null) {
+            return;
+        }
+
+        Map<String, Object> data =
+                new HashMap<>();
+
+        data.put(
+                "type",
+                type
+        );
+
+        data.put(
+                "activiteId",
+                activite.getIdActivite()
+        );
+
+        data.put(
+                "inscriptionId",
+                inscription.getIdInscription()
+        );
+
+        expoPushNotificationService
+                .envoyerNotification(
+                        expoPushToken,
+                        titre,
+                        message,
+                        data
+                );
+    }
 }

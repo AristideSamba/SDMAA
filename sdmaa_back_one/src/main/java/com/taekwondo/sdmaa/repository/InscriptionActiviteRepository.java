@@ -6,14 +6,32 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface InscriptionActiviteRepository
-        extends JpaRepository<InscriptionActivite, Long> {
+        extends JpaRepository<
+        InscriptionActivite,
+        Long
+        > {
 
-    boolean existsByUtilisateurIdUtilisateurAndActiviteIdActivite(
+    boolean
+    existsByUtilisateurIdUtilisateurAndActiviteIdActivite(
             Long idUtilisateur,
             Long idActivite
     );
 
-    List<InscriptionActivite> findByUtilisateurIdUtilisateur(
+    List<InscriptionActivite>
+    findByUtilisateurIdUtilisateur(
             Long idUtilisateur
+    );
+
+    /**
+     * Récupère les inscriptions d’une activité
+     * selon leur statut.
+     *
+     * Exemple :
+     * statutInscription = "validee"
+     */
+    List<InscriptionActivite>
+    findByActiviteIdActiviteAndStatutInscriptionIgnoreCase(
+            Long idActivite,
+            String statutInscription
     );
 }
