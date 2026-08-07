@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "660937527543",
+    "project_id": "sdmaa-3453c",
+    "storage_bucket": "sdmaa-3453c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:660937527543:android:55f8ed966fda04324703f2",
+        "android_client_info": {
+          "package_name": "com.romarissam.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA3oebJwZhhLSUA0SMHwcPQCj4nxGiLEyE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

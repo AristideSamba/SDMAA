@@ -1,0 +1,60 @@
+{
+  "expo": {
+    "name": "SDMAA",
+    "slug": "mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+
+    "ios": {
+      "supportsTablet": true,
+      "icon": "./assets/icon.png",
+      "bundleIdentifier": "com.romarissam.sdmaa"
+    },
+
+    "android": {
+      "icon": "./assets/icon.png",
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#800020"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.romarissam.mobile"
+    },
+
+    "web": {
+      "favicon": "./assets/favicon.ico"
+    },
+
+    "plugins": [
+      "expo-font",
+
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#121212"
+        }
+      ],
+
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#800020",
+          "defaultChannel": "sdmaa-default"
+        }
+      ]
+    ],
+
+    "extra": {
+      "eas": {
+        "projectId": "652e653d-100e-4d7e-8d3c-1eaa6a6868a8"
+      }
+    }
+  }
+}
