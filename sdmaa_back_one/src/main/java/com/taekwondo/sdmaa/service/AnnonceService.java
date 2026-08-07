@@ -6,6 +6,7 @@ import com.taekwondo.sdmaa.entity.Utilisateur;
 import com.taekwondo.sdmaa.enums.StatutAnnonce;
 import com.taekwondo.sdmaa.exception.ResourceNotFoundException;
 import com.taekwondo.sdmaa.mapper.AnnonceMapper;
+import com.taekwondo.sdmaa.repository.AdhesionRepository;
 import com.taekwondo.sdmaa.repository.AnnonceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,17 +20,31 @@ import java.util.List;
 @Transactional
 public class AnnonceService {
 
-    private final AnnonceRepository annonceRepository;
-    private final AnnonceMapper annonceMapper;
-    private final UtilisateurService utilisateurService;
+    private final AnnonceRepository
+            annonceRepository;
+
+    private final AnnonceMapper
+            annonceMapper;
+
+    private final UtilisateurService
+            utilisateurService;
+
+    private final NotificationService
+            notificationService;
+
+    private final AdhesionRepository
+            adhesionRepository;
 
     /**
-     * Crée une nouvelle annonce pour l'utilisateur connecté.
+     * Crée une nouvelle annonce pour
+     * l'utilisateur connecté.
      */
-    public AnnonceDTO creer(AnnonceDTO dto) {
-
+    public AnnonceDTO creer(
+            AnnonceDTO dto
+    ) {
         Utilisateur auteur =
-                utilisateurService.getUtilisateurConnecte();
+                utilisateurService
+                        .getUtilisateurConnecte();
 
         Annonce annonce =
                 annonceMapper.toEntity(dto);
@@ -42,9 +57,14 @@ public class AnnonceService {
             );
         }
 
+        boolean estPubliee =
+                annonce.getStatut()
+                        == StatutAnnonce.PUBLIEE;
+
         if (
-                annonce.getStatut() == StatutAnnonce.PUBLIEE
-                        && annonce.getDatePublication() == null
+                estPubliee
+                        && annonce.getDatePublication()
+                        == null
         ) {
             annonce.setDatePublication(
                     LocalDateTime.now()
@@ -52,7 +72,20 @@ public class AnnonceService {
         }
 
         Annonce annonceEnregistree =
-                annonceRepository.save(annonce);
+                annonceRepository.save(
+                        annonce
+                );
+
+        /*
+         * Une notification est envoyée uniquement
+         * si l'annonce est créée directement
+         * avec le statut PUBLIEE.
+         */
+        if (estPubliee) {
+            notifierNouvelleAnnonce(
+                    annonceEnregistree
+            );
+        }
 
         return annonceMapper.toDTO(
                 annonceEnregistree
@@ -64,7 +97,6 @@ public class AnnonceService {
      */
     @Transactional(readOnly = true)
     public List<AnnonceDTO> getAll() {
-
         return annonceRepository
                 .findAll()
                 .stream()
@@ -73,15 +105,19 @@ public class AnnonceService {
     }
 
     /**
-     * Récupère une annonce par son identifiant.
+     * Récupère une annonce par
+     * son identifiant.
      */
     @Transactional(readOnly = true)
-    public AnnonceDTO getById(Long id) {
-
+    public AnnonceDTO getById(
+            Long id
+    ) {
         Annonce annonce =
                 trouverAnnonce(id);
 
-        return annonceMapper.toDTO(annonce);
+        return annonceMapper.toDTO(
+                annonce
+        );
     }
 
     /**
@@ -90,7 +126,6 @@ public class AnnonceService {
      */
     @Transactional(readOnly = true)
     public List<AnnonceDTO> getPubliees() {
-
         return annonceRepository
                 .findByStatutOrderByDatePublicationDesc(
                         StatutAnnonce.PUBLIEE
@@ -101,11 +136,12 @@ public class AnnonceService {
     }
 
     /**
-     * Récupère les cinq dernières annonces publiées.
+     * Récupère les cinq dernières
+     * annonces publiées.
      */
     @Transactional(readOnly = true)
-    public List<AnnonceDTO> getDernieresAnnonces() {
-
+    public List<AnnonceDTO>
+    getDernieresAnnonces() {
         return annonceRepository
                 .findTop5ByStatutOrderByDatePublicationDesc(
                         StatutAnnonce.PUBLIEE
@@ -122,7 +158,6 @@ public class AnnonceService {
             Long id,
             AnnonceDTO dto
     ) {
-
         Annonce annonce =
                 trouverAnnonce(id);
 
@@ -139,17 +174,25 @@ public class AnnonceService {
          * on conserve l'ancien statut.
          */
         if (annonce.getStatut() == null) {
-            annonce.setStatut(ancienStatut);
+            annonce.setStatut(
+                    ancienStatut
+            );
         }
+
+        boolean devientPubliee =
+                annonce.getStatut()
+                        == StatutAnnonce.PUBLIEE
+                        && ancienStatut
+                        != StatutAnnonce.PUBLIEE;
 
         /*
          * Lorsque l'annonce devient publiée,
          * on initialise sa date de publication.
          */
         if (
-                annonce.getStatut() == StatutAnnonce.PUBLIEE
-                        && ancienStatut != StatutAnnonce.PUBLIEE
-                        && annonce.getDatePublication() == null
+                devientPubliee
+                        && annonce.getDatePublication()
+                        == null
         ) {
             annonce.setDatePublication(
                     LocalDateTime.now()
@@ -157,7 +200,22 @@ public class AnnonceService {
         }
 
         Annonce annonceModifiee =
-                annonceRepository.save(annonce);
+                annonceRepository.save(
+                        annonce
+                );
+
+        /*
+         * Une notification est créée uniquement
+         * lors du premier passage vers PUBLIEE.
+         *
+         * Une simple modification d'une annonce
+         * déjà publiée ne déclenche rien.
+         */
+        if (devientPubliee) {
+            notifierNouvelleAnnonce(
+                    annonceModifiee
+            );
+        }
 
         return annonceMapper.toDTO(
                 annonceModifiee
@@ -167,23 +225,44 @@ public class AnnonceService {
     /**
      * Publie une annonce.
      */
-    public AnnonceDTO publier(Long id) {
-
+    public AnnonceDTO publier(
+            Long id
+    ) {
         Annonce annonce =
                 trouverAnnonce(id);
+
+        boolean etaitDejaPubliee =
+                annonce.getStatut()
+                        == StatutAnnonce.PUBLIEE;
 
         annonce.setStatut(
                 StatutAnnonce.PUBLIEE
         );
 
-        if (annonce.getDatePublication() == null) {
+        if (
+                annonce.getDatePublication()
+                        == null
+        ) {
             annonce.setDatePublication(
                     LocalDateTime.now()
             );
         }
 
         Annonce annoncePubliee =
-                annonceRepository.save(annonce);
+                annonceRepository.save(
+                        annonce
+                );
+
+        /*
+         * Empêche l'envoi d'une nouvelle
+         * notification si l'annonce était
+         * déjà publiée.
+         */
+        if (!etaitDejaPubliee) {
+            notifierNouvelleAnnonce(
+                    annoncePubliee
+            );
+        }
 
         return annonceMapper.toDTO(
                 annoncePubliee
@@ -193,8 +272,9 @@ public class AnnonceService {
     /**
      * Archive une annonce.
      */
-    public AnnonceDTO archiver(Long id) {
-
+    public AnnonceDTO archiver(
+            Long id
+    ) {
         Annonce annonce =
                 trouverAnnonce(id);
 
@@ -203,7 +283,9 @@ public class AnnonceService {
         );
 
         Annonce annonceArchivee =
-                annonceRepository.save(annonce);
+                annonceRepository.save(
+                        annonce
+                );
 
         return annonceMapper.toDTO(
                 annonceArchivee
@@ -213,25 +295,78 @@ public class AnnonceService {
     /**
      * Supprime définitivement une annonce.
      */
-    public void supprimer(Long id) {
-
+    public void supprimer(
+            Long id
+    ) {
         Annonce annonce =
                 trouverAnnonce(id);
 
-        annonceRepository.delete(annonce);
+        annonceRepository.delete(
+                annonce
+        );
     }
 
     /**
-     * Recherche une annonce ou déclenche une exception.
+     * Crée les notifications internes génériques
+     * et envoie les notifications push.
+     *
+     * Une erreur de notification ne doit pas
+     * empêcher la publication de l'annonce.
      */
-    private Annonce trouverAnnonce(Long id) {
+    private void notifierNouvelleAnnonce(
+            Annonce annonce
+    ) {
+        try {
+            List<Utilisateur> utilisateurs =
+                    adhesionRepository
+                            .findUtilisateursAvecAdhesionValidee();
 
+            if (
+                    utilisateurs == null
+                            || utilisateurs.isEmpty()
+            ) {
+                System.out.println(
+                        "Aucun utilisateur à notifier "
+                                + "pour la nouvelle annonce."
+                );
+
+                return;
+            }
+
+            notificationService
+                    .notifierNouvelleAnnonce(
+                            annonce,
+                            utilisateurs
+                    );
+
+        } catch (Exception exception) {
+            System.err.println(
+                    "L'annonce a bien été publiée, "
+                            + "mais une erreur est survenue "
+                            + "pendant l'envoi des notifications : "
+                            + exception.getMessage()
+            );
+
+            exception.printStackTrace();
+        }
+    }
+
+    /**
+     * Recherche une annonce ou déclenche
+     * une exception.
+     */
+    private Annonce trouverAnnonce(
+            Long id
+    ) {
         return annonceRepository
                 .findById(id)
                 .orElseThrow(
-                        () -> new ResourceNotFoundException(
-                                "Annonce introuvable avec l'id : " + id
-                        )
+                        () ->
+                                new ResourceNotFoundException(
+                                        "Annonce introuvable "
+                                                + "avec l'id : "
+                                                + id
+                                )
                 );
     }
 }

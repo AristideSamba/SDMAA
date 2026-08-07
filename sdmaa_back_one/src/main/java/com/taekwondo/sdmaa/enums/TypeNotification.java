@@ -4,6 +4,8 @@ public enum TypeNotification {
 
     ANNONCE_COURS,
 
+    NOUVELLE_ANNONCE,
+
     NOUVELLE_ACTIVITE,
 
     VALIDATION_INSCRIPTION,

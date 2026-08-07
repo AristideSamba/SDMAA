@@ -60,6 +60,12 @@ const adminCards = [
     icon: Megaphone,
     path: "/dashboard/admin/annonces-cours",
   },
+  {
+    title: "Annonces",
+    description: "Informer les adhérents sur la vie du club.",
+    icon: Megaphone,
+    path: "/dashboard/admin/annonces",
+  }
 ];
 
 function AdminCard({ item }) {

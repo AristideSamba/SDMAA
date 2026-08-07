@@ -1,11 +1,6 @@
 package com.taekwondo.sdmaa.service;
 
-import com.taekwondo.sdmaa.entity.Activite;
-import com.taekwondo.sdmaa.entity.AnnonceCours;
-import com.taekwondo.sdmaa.entity.InscriptionActivite;
-import com.taekwondo.sdmaa.entity.NotificationCoursUtilisateur;
-import com.taekwondo.sdmaa.entity.NotificationUtilisateur;
-import com.taekwondo.sdmaa.entity.Utilisateur;
+import com.taekwondo.sdmaa.entity.*;
 import com.taekwondo.sdmaa.enums.TypeNotification;
 import com.taekwondo.sdmaa.repository.AdhesionRepository;
 import com.taekwondo.sdmaa.repository.NotificationCoursUtilisateurRepository;
@@ -1018,5 +1013,161 @@ public class NotificationService {
                         message,
                         data
                 );
+    }
+
+    @Transactional
+    public void notifierNouvelleAnnonce(
+            Annonce annonce,
+            List<Utilisateur> utilisateurs
+    ) {
+        if (
+                annonce == null
+                        || annonce.getId() == null
+        ) {
+            System.out.println(
+                    "Notification ignorée : annonce absente."
+            );
+
+            return;
+        }
+
+        if (
+                utilisateurs == null
+                        || utilisateurs.isEmpty()
+        ) {
+            System.out.println(
+                    "Aucun utilisateur à notifier pour l’annonce "
+                            + annonce.getId()
+            );
+
+            return;
+        }
+
+        for (Utilisateur utilisateur : utilisateurs) {
+            if (
+                    utilisateur == null
+                            || utilisateur.getIdUtilisateur() == null
+            ) {
+                continue;
+            }
+
+            creerNotificationNouvelleAnnonceSiAbsente(
+                    annonce,
+                    utilisateur
+            );
+
+            envoyerPushNouvelleAnnonce(
+                    annonce,
+                    utilisateur
+            );
+        }
+    }
+
+    private void creerNotificationNouvelleAnnonceSiAbsente(
+            Annonce annonce,
+            Utilisateur utilisateur
+    ) {
+        boolean existe =
+                notificationUtilisateurRepository
+                        .existsByUtilisateurIdUtilisateurAndTypeNotificationAndAnnonceId(
+                                utilisateur.getIdUtilisateur(),
+                                TypeNotification.NOUVELLE_ANNONCE,
+                                annonce.getId()
+                        );
+
+        if (existe) {
+            return;
+        }
+
+        String titre =
+                texteOuDefaut(
+                        annonce.getTitre(),
+                        "Nouvelle annonce"
+                );
+
+        String message =
+                texteOuDefaut(
+                        annonce.getContenu(),
+                        "Une nouvelle information du club est disponible."
+                );
+
+        NotificationUtilisateur notification =
+                NotificationUtilisateur.builder()
+                        .utilisateur(utilisateur)
+                        .typeNotification(
+                                TypeNotification.NOUVELLE_ANNONCE
+                        )
+                        .titre(titre)
+                        .message(message)
+                        .titreCible(titre)
+                        .annonceId(
+                                annonce.getId()
+                        )
+                        .estLue(false)
+                        .dateLecture(null)
+                        .build();
+
+        notificationUtilisateurRepository.save(
+                notification
+        );
+    }
+
+    private void envoyerPushNouvelleAnnonce(
+            Annonce annonce,
+            Utilisateur utilisateur
+    ) {
+        String expoPushToken =
+                getExpoPushToken(utilisateur);
+
+        if (expoPushToken == null) {
+            return;
+        }
+
+        String titre =
+                texteOuDefaut(
+                        annonce.getTitre(),
+                        "Nouvelle annonce"
+                );
+
+        String message =
+                texteOuDefaut(
+                        annonce.getContenu(),
+                        "Une nouvelle information du club est disponible."
+                );
+
+        Map<String, Object> data =
+                new HashMap<>();
+
+        data.put(
+                "type",
+                "NOUVELLE_ANNONCE"
+        );
+
+        data.put(
+                "annonceId",
+                annonce.getId()
+        );
+
+        expoPushNotificationService
+                .envoyerNotification(
+                        expoPushToken,
+                        titre,
+                        message,
+                        data
+                );
+    }
+
+    private String texteOuDefaut(
+            String valeur,
+            String valeurParDefaut
+    ) {
+        if (
+                valeur == null
+                        || valeur.isBlank()
+        ) {
+            return valeurParDefaut;
+        }
+
+        return valeur.trim();
     }
 }

@@ -126,6 +126,11 @@ const getMenuItems = (role) => [
           label: "Annonces cours",
           path: "/dashboard/admin/annonces-cours",
         },
+        {
+          icon: Megaphone,
+          label: "Annonces",
+          path: "/dashboard/admin/annonces",
+        },
         { section: "Personnel" },
         {
           icon: User,

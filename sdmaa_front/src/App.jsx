@@ -43,7 +43,9 @@ import InscriptionSucces from "./pages/InscriptionSucces";
 import AdminEquipements from "./pages/dashboardAdmin/AdminEquipements";
 import AdminAchatsEquipements from "./pages/dashboardAdmin/AdminAchatsEquipements";
 import AdminEmpruntsEquipements from "./pages/dashboardAdmin/AdminEmpruntsEquipements";
-
+import AdminAnnonces from "./pages/dashboardAdmin/AdminAnnonces";
+import AdminNouvelleAnnonce from "./pages/dashboardAdmin/AdminNouvelleAnnonce";
+import AdminModifierAnnonce from "./pages/dashboardAdmin/AdminModifierAnnonce";
 
 function App() {
   return (
@@ -84,6 +86,16 @@ function App() {
           <Route path="/dashboard/admin/activites/:id" element={<AdminActiviteDetail />} />
           <Route path="/dashboard/admin/utilisateurs/:id" element={<AdminUtilisateurDetails />} />
           <Route path="/dashboard/admin/cours/:id" element={<AdminCoursDetail />} />
+          <Route path="/dashboard/admin/annonces" element={<AdminAnnonces />} />
+          <Route
+            path="/dashboard/admin/annonces/nouveau"
+            element={<AdminNouvelleAnnonce />}
+          />
+          
+          <Route
+            path="/dashboard/admin/annonces/:id"
+            element={<AdminModifierAnnonce />}
+          />
         </Route>
         {/* Pages Dashboard Utilisateur*/}
         <Route element={<ProtectedRoute allowedRoles={["ADHERENT"]} />}>
