@@ -5,7 +5,7 @@ import { NavLink, Link } from "react-router-dom";
 import { Menu, X, ChevronDown } from "lucide-react";
 
 import ConnectBtn from "../buttons/connectBtn";
-import logo from "../../assets/sdmma.jpg";
+import logo from "../../assets/sdmma.png";
 
 const links = [
   { name: "Accueil", path: "/" },

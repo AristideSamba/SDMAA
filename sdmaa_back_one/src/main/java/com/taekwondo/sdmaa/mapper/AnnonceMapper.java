@@ -2,50 +2,73 @@ package com.taekwondo.sdmaa.mapper;
 
 import com.taekwondo.sdmaa.dto.AnnonceDTO;
 import com.taekwondo.sdmaa.entity.Annonce;
-import com.taekwondo.sdmaa.entity.Utilisateur;
 import org.springframework.stereotype.Component;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 @Component
 public class AnnonceMapper {
 
     /**
-     * Convertit une entité Annonce en DTO.
+     * Convertit une entité en DTO.
      */
-    public AnnonceDTO toDTO(Annonce annonce) {
-
+    public AnnonceDTO toDTO(
+            Annonce annonce
+    ) {
         if (annonce == null) {
             return null;
         }
 
         return AnnonceDTO.builder()
-                .id(annonce.getId())
-                .titre(annonce.getTitre())
-                .contenu(annonce.getContenu())
-                .image(annonce.getImage())
-                .imageUrl(
-                        annonce.getImage() == null
-                                ? null
-                                : ServletUriComponentsBuilder
-                                .fromCurrentContextPath()
-                                .path("/uploads/")
-                                .path(annonce.getImage())
-                                .toUriString()
+                .id(
+                        annonce.getId()
                 )
-                .statut(annonce.getStatut())
-                .datePublication(annonce.getDatePublication())
-                .dateCreation(annonce.getDateCreation())
-                .dateModification(annonce.getDateModification())
+                .titre(
+                        annonce.getTitre()
+                )
+                .contenu(
+                        annonce.getContenu()
+                )
+
+                /*
+                 * L'image contient directement
+                 * l'URL Cloudinary.
+                 */
+                .image(
+                        annonce.getImage()
+                )
+
+                /*
+                 * Alias conservé pour les écrans
+                 * utilisant encore imageUrl.
+                 */
+                .imageUrl(
+                        annonce.getImage()
+                )
+
+                .statut(
+                        annonce.getStatut()
+                )
+                .datePublication(
+                        annonce.getDatePublication()
+                )
+                .dateCreation(
+                        annonce.getDateCreation()
+                )
+                .dateModification(
+                        annonce.getDateModification()
+                )
 
                 .auteurId(
                         annonce.getAuteur() != null
-                                ? annonce.getAuteur().getIdUtilisateur()
+                                ? annonce.getAuteur()
+                                .getIdUtilisateur()
                                 : null
                 )
 
                 .auteurNom(
                         annonce.getAuteur() != null
-                                ?  annonce.getAuteur().getPrenom() + " " + annonce.getAuteur().getNom()
+                                ? construireNomAuteur(
+                                annonce
+                        )
                                 : null
                 )
 
@@ -53,44 +76,90 @@ public class AnnonceMapper {
     }
 
     /**
-     * Convertit un DTO en entité.
+     * Conversion DTO -> entité.
      *
-     * L'auteur est renseigné par le service,
-     * car lui seul connaît l'utilisateur connecté.
+     * L'image n'est volontairement pas prise
+     * depuis le DTO.
+     *
+     * Elle est gérée uniquement par la route
+     * Cloudinary dédiée.
      */
-    public Annonce toEntity(AnnonceDTO dto) {
-
+    public Annonce toEntity(
+            AnnonceDTO dto
+    ) {
         if (dto == null) {
             return null;
         }
 
         return Annonce.builder()
-                .id(dto.getId())
-                .titre(dto.getTitre())
-                .contenu(dto.getContenu())
-                .image(dto.getImage())
-                .statut(dto.getStatut())
-                .datePublication(dto.getDatePublication())
+                .id(
+                        dto.getId()
+                )
+                .titre(
+                        dto.getTitre()
+                )
+                .contenu(
+                        dto.getContenu()
+                )
+                .statut(
+                        dto.getStatut()
+                )
+                .datePublication(
+                        dto.getDatePublication()
+                )
                 .build();
     }
 
     /**
-     * Met à jour une annonce existante.
+     * Mise à jour des informations textuelles.
      *
-     * On ne touche jamais :
-     * - à l'id
-     * - à l'auteur
-     * - aux dates de création
+     * On ne modifie pas :
+     * - id
+     * - auteur
+     * - image
+     * - imagePublicId
+     * - dateCreation
      */
     public void updateEntity(
             Annonce annonce,
             AnnonceDTO dto
     ) {
+        annonce.setTitre(
+                dto.getTitre()
+        );
 
-        annonce.setTitre(dto.getTitre());
-        annonce.setContenu(dto.getContenu());
-        annonce.setImage(dto.getImage());
-        annonce.setStatut(dto.getStatut());
-        annonce.setDatePublication(dto.getDatePublication());
+        annonce.setContenu(
+                dto.getContenu()
+        );
+
+        annonce.setStatut(
+                dto.getStatut()
+        );
+
+        annonce.setDatePublication(
+                dto.getDatePublication()
+        );
+    }
+
+    private String construireNomAuteur(
+            Annonce annonce
+    ) {
+        String prenom =
+                annonce.getAuteur()
+                        .getPrenom();
+
+        String nom =
+                annonce.getAuteur()
+                        .getNom();
+
+        return (
+                (prenom != null
+                        ? prenom
+                        : "")
+                        + " "
+                        + (nom != null
+                        ? nom
+                        : "")
+        ).trim();
     }
 }

@@ -13,6 +13,11 @@ import {
 
 const statuts = ["TOUS", "en_attente", "en_cours", "retourne", "refuse"];
 
+const API_URL = (
+  import.meta.env.VITE_API_URL ||
+  "https://sdmaa.onrender.com/api"
+).replace(/\/$/, "");
+
 const formatDate = (date) => {
   if (!date) return "—";
 
@@ -70,7 +75,7 @@ function AdminEmpruntsEquipements() {
     try {
       setError("");
 
-      const res = await apiFetch("http://localhost:8080/api/emprunts-equipements");
+      const res = await apiFetch(`${API_URL}/emprunts-equipements`);
       const data = await res.json().catch(() => null);
 
       if (!res.ok) {
@@ -126,7 +131,7 @@ function AdminEmpruntsEquipements() {
 
     try {
       const res = await apiFetch(
-        `http://localhost:8080/api/emprunts-equipements/${id}/${action}`,
+        `${API_URL}/emprunts-equipements/${id}/${action}`,
         {
           method: "PUT",
         }
@@ -154,7 +159,7 @@ function AdminEmpruntsEquipements() {
 
     try {
       const res = await apiFetch(
-        `http://localhost:8080/api/emprunts-equipements/${id}`,
+        `${API_URL}/emprunts-equipements/${id}`,
         {
           method: "DELETE",
         }

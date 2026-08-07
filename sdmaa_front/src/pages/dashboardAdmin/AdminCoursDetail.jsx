@@ -21,6 +21,12 @@ const jours = [
   "Dimanche",
 ];
 
+const API_URL = (
+  import.meta.env.VITE_API_URL ||
+  "https://sdmaa.onrender.com/api"
+).replace(/\/$/, "");
+
+
 function Field({ icon: Icon, label, name, value, onChange, type = "text" }) {
   return (
     <div>
@@ -151,7 +157,7 @@ function AdminCoursDetail() {
   };
 
   const refreshCours = async () => {
-    const res = await apiFetch(`http://localhost:8080/api/cours/${id}`);
+    const res = await apiFetch(`${API_URL}/cours/${id}`);
 
     if (!res) return;
 
@@ -169,8 +175,8 @@ function AdminCoursDetail() {
         setError("");
 
         const [coursRes, usersRes] = await Promise.all([
-          apiFetch(`http://localhost:8080/api/cours/${id}`),
-          apiFetch("http://localhost:8080/api/utilisateurs"),
+          apiFetch(`${API_URL}/cours/${id}`),
+          apiFetch(`${API_URL}/utilisateurs`),
         ]);
 
         if (!coursRes || !usersRes) return;
@@ -229,7 +235,7 @@ function AdminCoursDetail() {
     setSuccess("");
 
     try {
-      const res = await apiFetch(`http://localhost:8080/api/cours/${id}`, {
+      const res = await apiFetch(`${API_URL}/cours/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -265,7 +271,7 @@ function AdminCoursDetail() {
 
     try {
       const res = await apiFetch(
-        `http://localhost:8080/api/affectations-cours?idCours=${id}&idCoach=${selectedCoach}`,
+        `${API_URL}/affectations-cours?idCours=${id}&idCoach=${selectedCoach}`,
         {
           method: "POST",
         }

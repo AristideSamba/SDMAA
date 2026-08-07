@@ -1,10 +1,7 @@
 package com.taekwondo.sdmaa.dto;
 
 import com.taekwondo.sdmaa.enums.StatutAnnonce;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
@@ -21,9 +18,15 @@ public class AnnonceDTO {
     private String contenu;
 
     /**
-     * URL ou nom de l'image.
+     * URL Cloudinary.
      */
     private String image;
+
+    /**
+     * Alias pratique conservé pour
+     * compatibilité avec le frontend/mobile.
+     */
+    private String imageUrl;
 
     private StatutAnnonce statut;
 
@@ -33,12 +36,7 @@ public class AnnonceDTO {
 
     private LocalDateTime dateModification;
 
-    /**
-     * Informations de l'auteur.
-     */
     private Long auteurId;
 
     private String auteurNom;
-
-    private String imageUrl;
 }

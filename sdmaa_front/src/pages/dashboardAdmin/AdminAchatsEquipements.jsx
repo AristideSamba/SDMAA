@@ -11,6 +11,11 @@ import {
 
 const statuts = ["TOUS", "en_attente", "paye", "refuse"];
 
+const API_URL = (
+  import.meta.env.VITE_API_URL ||
+  "https://sdmaa.onrender.com/api"
+).replace(/\/$/, "");
+
 const formatDate = (date) => {
   if (!date) return "—";
 
@@ -67,7 +72,7 @@ function AdminAchatsEquipements() {
     try {
       setError("");
 
-      const res = await apiFetch("http://localhost:8080/api/achats-equipements");
+      const res = await apiFetch(`${API_URL}/achats-equipements`);
       const data = await res.json().catch(() => null);
 
       if (!res.ok) {
@@ -124,7 +129,7 @@ function AdminAchatsEquipements() {
 
     try {
       const res = await apiFetch(
-        `http://localhost:8080/api/achats-equipements/${id}/valider`,
+        `${API_URL}/achats-equipements/${id}/valider`,
         {
           method: "PUT",
         }

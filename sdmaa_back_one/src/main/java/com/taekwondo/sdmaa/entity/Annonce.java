@@ -2,11 +2,7 @@ package com.taekwondo.sdmaa.entity;
 
 import com.taekwondo.sdmaa.enums.StatutAnnonce;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
@@ -36,11 +32,25 @@ public class Annonce {
     private String contenu;
 
     /**
-     * Nom du fichier ou URL de l'image.
-     * Ce champ reste facultatif.
+     * URL publique Cloudinary.
      */
-    @Column(length = 500)
+    @Column(
+            name = "image",
+            length = 500
+    )
     private String image;
+
+    /**
+     * Identifiant Cloudinary.
+     *
+     * Permet de remplacer ou supprimer
+     * proprement l'image dans Cloudinary.
+     */
+    @Column(
+            name = "image_public_id",
+            length = 500
+    )
+    private String imagePublicId;
 
     @Enumerated(EnumType.STRING)
     @Column(
@@ -49,10 +59,6 @@ public class Annonce {
     )
     private StatutAnnonce statut;
 
-    /**
-     * Date à partir de laquelle l'annonce
-     * doit être visible par les utilisateurs.
-     */
     @Column(name = "date_publication")
     private LocalDateTime datePublication;
 
@@ -69,12 +75,6 @@ public class Annonce {
     )
     private LocalDateTime dateModification;
 
-    /**
-     * Auteur de l'annonce.
-     *
-     * Facultatif pour éviter une erreur si
-     * un utilisateur administrateur est supprimé.
-     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "auteur_id")
     private Utilisateur auteur;
@@ -88,14 +88,16 @@ public class Annonce {
         dateModification = maintenant;
 
         if (statut == null) {
-            statut = StatutAnnonce.BROUILLON;
+            statut =
+                    StatutAnnonce.BROUILLON;
         }
 
         if (
                 statut == StatutAnnonce.PUBLIEE
                         && datePublication == null
         ) {
-            datePublication = maintenant;
+            datePublication =
+                    maintenant;
         }
     }
 

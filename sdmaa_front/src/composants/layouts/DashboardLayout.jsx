@@ -17,7 +17,7 @@ import {
   Megaphone,
 } from "lucide-react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import logo from "../../assets/sdmma.jpg";
+import logo from "../../assets/sdmma.png";
 import taekwondo from "../../assets/tea.png";
 
 const getMenuItems = (role) => [

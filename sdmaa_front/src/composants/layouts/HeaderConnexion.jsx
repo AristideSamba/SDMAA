@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import logo from "../../assets/sdmma.jpg";
+import logo from "../../assets/sdmma.png";
 
 function HeaderConnexion() {
   return (

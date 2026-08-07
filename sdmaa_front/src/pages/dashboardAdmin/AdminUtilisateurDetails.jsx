@@ -12,6 +12,11 @@ import {
   CheckCircle2,
 } from "lucide-react";
 
+const API_URL = (
+  import.meta.env.VITE_API_URL ||
+  "https://sdmaa.onrender.com/api"
+).replace(/\/$/, "");
+
 function Field({ icon: Icon, label, name, value, onChange, type = "text" }) {
   return (
     <div>
@@ -112,8 +117,8 @@ function AdminUtilisateurDetails() {
       setError("");
 
       const [userRes, ceinturesRes] = await Promise.all([
-        apiFetch(`http://localhost:8080/api/utilisateurs/${id}`),
-        apiFetch("http://localhost:8080/api/ceintures"),
+        apiFetch(`${API_URL}/utilisateurs/${id}`),
+        apiFetch(`${API_URL}/ceintures`),
       ]);
 
       if (!userRes || !ceinturesRes) return;
@@ -179,7 +184,7 @@ function AdminUtilisateurDetails() {
 
     try {
       const res = await apiFetch(
-        `http://localhost:8080/api/utilisateurs/${id}/profil`,
+        `${API_URL}/utilisateurs/${id}/profil`,
         {
           method: "PUT",
           headers: {
@@ -216,7 +221,7 @@ function AdminUtilisateurDetails() {
 
     try {
       const res = await apiFetch(
-        `http://localhost:8080/api/utilisateurs/${id}/ceinture/${selectedCeinture}`,
+        `${API_URL}/utilisateurs/${id}/ceinture/${selectedCeinture}`,
         {
           method: "PUT",
         }
@@ -244,7 +249,7 @@ function AdminUtilisateurDetails() {
 
     try {
       const res = await apiFetch(
-        `http://localhost:8080/api/utilisateurs/${id}/statut?statut=${statutCompte}`,
+        `${API_URL}/utilisateurs/${id}/statut?statut=${encodeURIComponent(statutCompte)}`,
         {
           method: "PUT",
         }

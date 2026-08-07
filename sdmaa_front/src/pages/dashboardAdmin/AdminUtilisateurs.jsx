@@ -15,6 +15,11 @@ import {
 
 const roles = ["TOUS", "ADHERENT", "COACH", "ADMIN"];
 
+const API_URL = (
+  import.meta.env.VITE_API_URL ||
+  "https://sdmaa.onrender.com/api"
+).replace(/\/$/, "");
+
 const formatDate = (date) => {
   if (!date) return "—";
 
@@ -114,7 +119,7 @@ function AdminUtilisateurs() {
   };
 
   const fetchUsers = async () => {
-    const res = await apiFetch("http://localhost:8080/api/utilisateurs");
+    const res = await apiFetch(`${API_URL}/utilisateurs`);
 
     if (!res) return [];
 
@@ -128,7 +133,7 @@ function AdminUtilisateurs() {
   };
 
   const fetchAdhesions = async () => {
-    const res = await apiFetch("http://localhost:8080/api/adhesions");
+    const res = await apiFetch(`${API_URL}/adhesions`);
 
     if (!res) return [];
 
@@ -212,7 +217,7 @@ function AdminUtilisateurs() {
 
     try {
       const res = await apiFetch(
-        `http://localhost:8080/api/utilisateurs/${id}/role?role=${newRole}`,
+        `${API_URL}/utilisateurs/${id}/role?role=${encodeURIComponent(newRole)}`,
         { method: "PUT" }
       );
 
@@ -243,7 +248,7 @@ function AdminUtilisateurs() {
 
     try {
       const res = await apiFetch(
-        `http://localhost:8080/api/utilisateurs/${userToSuspend.id}/suspendre`,
+        `${API_URL}/utilisateurs/${userToSuspend.id}/suspendre`,
         { method: "PUT" }
       );
 
@@ -274,7 +279,7 @@ function AdminUtilisateurs() {
 
     try {
       const res = await apiFetch(
-        `http://localhost:8080/api/adhesions/${id}/valider`,
+        `${API_URL}/adhesions/${id}/valider`,
         { method: "PUT" }
       );
 

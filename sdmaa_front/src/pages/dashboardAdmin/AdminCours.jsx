@@ -24,6 +24,11 @@ const jours = [
   "Dimanche",
 ];
 
+const API_URL = (
+  import.meta.env.VITE_API_URL ||
+  "https://sdmaa.onrender.com/api"
+).replace(/\/$/, "");
+
 const formatTime = (time) => {
   if (!time) return "—";
   return String(time).slice(0, 5);
@@ -89,7 +94,7 @@ function AdminCours() {
     try {
       setError("");
 
-      const res = await apiFetch("http://localhost:8080/api/cours");
+      const res = await apiFetch(`${API_URL}/cours`);
 
       if (!res) return;
 
@@ -145,7 +150,7 @@ function AdminCours() {
 
     try {
       const res = await apiFetch(
-        `http://localhost:8080/api/cours/${coursToDelete.idCours}/suspendre`,
+        `${API_URL}/cours/${coursToDelete.idCours}/suspendre`,
         { method: "PUT" }
       );
 

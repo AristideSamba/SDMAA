@@ -11,14 +11,20 @@ import com.taekwondo.sdmaa.repository.AnnonceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class AnnonceService {
+
+    private static final String
+            DOSSIER_CLOUDINARY =
+            "sdmaa/annonces";
 
     private final AnnonceRepository
             annonceRepository;
@@ -35,9 +41,14 @@ public class AnnonceService {
     private final AdhesionRepository
             adhesionRepository;
 
+    private final CloudinaryImageService
+            cloudinaryImageService;
+
     /**
-     * Crée une nouvelle annonce pour
-     * l'utilisateur connecté.
+     * Crée une annonce sans image.
+     *
+     * L'image est envoyée ensuite par
+     * la route dédiée.
      */
     public AnnonceDTO creer(
             AnnonceDTO dto
@@ -47,9 +58,19 @@ public class AnnonceService {
                         .getUtilisateurConnecte();
 
         Annonce annonce =
-                annonceMapper.toEntity(dto);
+                annonceMapper
+                        .toEntity(dto);
 
-        annonce.setAuteur(auteur);
+        annonce.setAuteur(
+                auteur
+        );
+
+        /*
+         * L'image est exclusivement gérée
+         * par Cloudinary.
+         */
+        annonce.setImage(null);
+        annonce.setImagePublicId(null);
 
         if (annonce.getStatut() == null) {
             annonce.setStatut(
@@ -76,11 +97,6 @@ public class AnnonceService {
                         annonce
                 );
 
-        /*
-         * Une notification est envoyée uniquement
-         * si l'annonce est créée directement
-         * avec le statut PUBLIEE.
-         */
         if (estPubliee) {
             notifierNouvelleAnnonce(
                     annonceEnregistree
@@ -93,36 +109,33 @@ public class AnnonceService {
     }
 
     /**
-     * Récupère toutes les annonces.
+     * Toutes les annonces.
      */
     @Transactional(readOnly = true)
     public List<AnnonceDTO> getAll() {
         return annonceRepository
                 .findAll()
                 .stream()
-                .map(annonceMapper::toDTO)
+                .map(
+                        annonceMapper::toDTO
+                )
                 .toList();
     }
 
     /**
-     * Récupère une annonce par
-     * son identifiant.
+     * Annonce par identifiant.
      */
     @Transactional(readOnly = true)
     public AnnonceDTO getById(
             Long id
     ) {
-        Annonce annonce =
-                trouverAnnonce(id);
-
         return annonceMapper.toDTO(
-                annonce
+                trouverAnnonce(id)
         );
     }
 
     /**
-     * Récupère toutes les annonces publiées,
-     * de la plus récente à la plus ancienne.
+     * Toutes les annonces publiées.
      */
     @Transactional(readOnly = true)
     public List<AnnonceDTO> getPubliees() {
@@ -131,13 +144,14 @@ public class AnnonceService {
                         StatutAnnonce.PUBLIEE
                 )
                 .stream()
-                .map(annonceMapper::toDTO)
+                .map(
+                        annonceMapper::toDTO
+                )
                 .toList();
     }
 
     /**
-     * Récupère les cinq dernières
-     * annonces publiées.
+     * Cinq dernières annonces publiées.
      */
     @Transactional(readOnly = true)
     public List<AnnonceDTO>
@@ -147,12 +161,16 @@ public class AnnonceService {
                         StatutAnnonce.PUBLIEE
                 )
                 .stream()
-                .map(annonceMapper::toDTO)
+                .map(
+                        annonceMapper::toDTO
+                )
                 .toList();
     }
 
     /**
-     * Modifie une annonce existante.
+     * Modifie une annonce.
+     *
+     * L'image n'est pas modifiée ici.
      */
     public AnnonceDTO modifier(
             Long id,
@@ -169,10 +187,6 @@ public class AnnonceService {
                 dto
         );
 
-        /*
-         * Si aucun statut n'est envoyé,
-         * on conserve l'ancien statut.
-         */
         if (annonce.getStatut() == null) {
             annonce.setStatut(
                     ancienStatut
@@ -185,10 +199,6 @@ public class AnnonceService {
                         && ancienStatut
                         != StatutAnnonce.PUBLIEE;
 
-        /*
-         * Lorsque l'annonce devient publiée,
-         * on initialise sa date de publication.
-         */
         if (
                 devientPubliee
                         && annonce.getDatePublication()
@@ -204,18 +214,125 @@ public class AnnonceService {
                         annonce
                 );
 
-        /*
-         * Une notification est créée uniquement
-         * lors du premier passage vers PUBLIEE.
-         *
-         * Une simple modification d'une annonce
-         * déjà publiée ne déclenche rien.
-         */
         if (devientPubliee) {
             notifierNouvelleAnnonce(
                     annonceModifiee
             );
         }
+
+        return annonceMapper.toDTO(
+                annonceModifiee
+        );
+    }
+
+    /**
+     * Ajoute ou remplace l'image
+     * d'une annonce dans Cloudinary.
+     */
+    public AnnonceDTO updateImage(
+            Long id,
+            MultipartFile image
+    ) {
+        Annonce annonce =
+                trouverAnnonce(id);
+
+        Map<String, String> resultat =
+                cloudinaryImageService
+                        .uploader(
+                                image,
+                                DOSSIER_CLOUDINARY
+                        );
+
+        String nouvelleUrl =
+                resultat.get(
+                        "url"
+                );
+
+        String nouveauPublicId =
+                resultat.get(
+                        "publicId"
+                );
+
+        if (
+                nouvelleUrl == null
+                        || nouvelleUrl.isBlank()
+                        || nouveauPublicId == null
+                        || nouveauPublicId.isBlank()
+        ) {
+            throw new IllegalStateException(
+                    "Cloudinary n'a pas retourné "
+                            + "les informations attendues."
+            );
+        }
+
+        String ancienPublicId =
+                annonce.getImagePublicId();
+
+        annonce.setImage(
+                nouvelleUrl
+        );
+
+        annonce.setImagePublicId(
+                nouveauPublicId
+        );
+
+        Annonce annonceModifiee =
+                annonceRepository.save(
+                        annonce
+                );
+
+        /*
+         * L'ancienne image est supprimée
+         * seulement après sauvegarde
+         * de la nouvelle.
+         */
+        if (
+                ancienPublicId != null
+                        && !ancienPublicId.isBlank()
+                        && !ancienPublicId.equals(
+                        nouveauPublicId
+                )
+        ) {
+            cloudinaryImageService
+                    .supprimer(
+                            ancienPublicId
+                    );
+        }
+
+        return annonceMapper.toDTO(
+                annonceModifiee
+        );
+    }
+
+    /**
+     * Supprime uniquement l'image.
+     */
+    public AnnonceDTO deleteImage(
+            Long id
+    ) {
+        Annonce annonce =
+                trouverAnnonce(id);
+
+        String publicId =
+                annonce.getImagePublicId();
+
+        if (
+                publicId != null
+                        && !publicId.isBlank()
+        ) {
+            cloudinaryImageService
+                    .supprimer(
+                            publicId
+                    );
+        }
+
+        annonce.setImage(null);
+        annonce.setImagePublicId(null);
+
+        Annonce annonceModifiee =
+                annonceRepository.save(
+                        annonce
+                );
 
         return annonceMapper.toDTO(
                 annonceModifiee
@@ -253,11 +370,6 @@ public class AnnonceService {
                         annonce
                 );
 
-        /*
-         * Empêche l'envoi d'une nouvelle
-         * notification si l'annonce était
-         * déjà publiée.
-         */
         if (!etaitDejaPubliee) {
             notifierNouvelleAnnonce(
                     annoncePubliee
@@ -293,7 +405,8 @@ public class AnnonceService {
     }
 
     /**
-     * Supprime définitivement une annonce.
+     * Supprime l'annonce ainsi que
+     * son image Cloudinary.
      */
     public void supprimer(
             Long id
@@ -301,17 +414,26 @@ public class AnnonceService {
         Annonce annonce =
                 trouverAnnonce(id);
 
+        String publicId =
+                annonce.getImagePublicId();
+
+        if (
+                publicId != null
+                        && !publicId.isBlank()
+        ) {
+            cloudinaryImageService
+                    .supprimer(
+                            publicId
+                    );
+        }
+
         annonceRepository.delete(
                 annonce
         );
     }
 
     /**
-     * Crée les notifications internes génériques
-     * et envoie les notifications push.
-     *
-     * Une erreur de notification ne doit pas
-     * empêcher la publication de l'annonce.
+     * Notification d'une nouvelle annonce.
      */
     private void notifierNouvelleAnnonce(
             Annonce annonce
@@ -352,8 +474,7 @@ public class AnnonceService {
     }
 
     /**
-     * Recherche une annonce ou déclenche
-     * une exception.
+     * Recherche interne.
      */
     private Annonce trouverAnnonce(
             Long id

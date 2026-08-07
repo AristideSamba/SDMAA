@@ -5,12 +5,8 @@ import com.taekwondo.sdmaa.service.AnnonceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
-import com.taekwondo.sdmaa.dto.ImageUploadResponse;
-import com.taekwondo.sdmaa.service.AnnonceImageService;
-import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -19,47 +15,27 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AnnonceController {
 
-    private final AnnonceService annonceService;
-    private final AnnonceImageService annonceImageService;
+    private final AnnonceService
+            annonceService;
 
-    @PostMapping("/image")
+    /**
+     * Créer une annonce sans image.
+     */
+    @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('ADMIN', 'COACH')")
-    public ImageUploadResponse uploaderImage(
-            @RequestParam("image") MultipartFile image
+    @PreAuthorize(
+            "hasAnyRole('ADMIN', 'COACH')"
+    )
+    public AnnonceDTO creer(
+            @RequestBody AnnonceDTO dto
     ) {
-        String chemin =
-                annonceImageService.enregistrer(image);
-
-        String url =
-                ServletUriComponentsBuilder
-                        .fromCurrentContextPath()
-                        .path("/uploads/")
-                        .path(chemin)
-                        .toUriString();
-
-        return new ImageUploadResponse(
-                chemin,
-                url
+        return annonceService.creer(
+                dto
         );
     }
 
     /**
-     * Créer une annonce.
-     * Accessible uniquement aux administrateurs et aux coachs.
-     */
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('ADMIN', 'COACH')")
-    public AnnonceDTO creer(
-            @RequestBody AnnonceDTO dto
-    ) {
-        return annonceService.creer(dto);
-    }
-
-    /**
-     * Récupérer toutes les annonces.
-     * Réservé à l'administration.
+     * Toutes les annonces.
      */
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
@@ -68,84 +44,130 @@ public class AnnonceController {
     }
 
     /**
-     * Récupérer une annonce par son identifiant.
-     * Accessible aux administrateurs et aux coachs.
+     * Annonce par identifiant.
      */
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public AnnonceDTO getById(
             @PathVariable Long id
     ) {
-        return annonceService.getById(id);
+        return annonceService.getById(
+                id
+        );
     }
 
     /**
-     * Récupérer toutes les annonces publiées.
-     * Accessible aux utilisateurs authentifiés.
+     * Annonces publiées.
      */
     @GetMapping("/publiees")
     @PreAuthorize("isAuthenticated()")
     public List<AnnonceDTO> getPubliees() {
-        return annonceService.getPubliees();
+        return annonceService
+                .getPubliees();
     }
 
     /**
-     * Récupérer les cinq dernières annonces publiées.
-     * Accessible aux utilisateurs authentifiés.
+     * Cinq dernières annonces.
      */
     @GetMapping("/dernieres")
     @PreAuthorize("isAuthenticated()")
-    public List<AnnonceDTO> getDernieresAnnonces() {
-        return annonceService.getDernieresAnnonces();
+    public List<AnnonceDTO>
+    getDernieresAnnonces() {
+        return annonceService
+                .getDernieresAnnonces();
     }
 
     /**
-     * Modifier une annonce.
-     * Accessible uniquement aux administrateurs et aux coachs.
+     * Modifier les informations.
+     *
+     * L'image n'est pas modifiée ici.
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COACH')")
+    @PreAuthorize(
+            "hasAnyRole('ADMIN', 'COACH')"
+    )
     public AnnonceDTO modifier(
             @PathVariable Long id,
             @RequestBody AnnonceDTO dto
     ) {
-        return annonceService.modifier(id, dto);
+        return annonceService.modifier(
+                id,
+                dto
+        );
     }
 
     /**
-     * Publier une annonce.
-     * Accessible uniquement aux administrateurs et aux coachs.
+     * Ajouter ou remplacer l'image.
+     */
+    @PostMapping("/{id}/image")
+    @PreAuthorize(
+            "hasAnyRole('ADMIN', 'COACH')"
+    )
+    public AnnonceDTO updateImage(
+            @PathVariable Long id,
+            @RequestParam("image")
+            MultipartFile image
+    ) {
+        return annonceService
+                .updateImage(
+                        id,
+                        image
+                );
+    }
+
+    /**
+     * Supprimer uniquement l'image.
+     */
+    @DeleteMapping("/{id}/image")
+    @PreAuthorize(
+            "hasAnyRole('ADMIN', 'COACH')"
+    )
+    public AnnonceDTO deleteImage(
+            @PathVariable Long id
+    ) {
+        return annonceService
+                .deleteImage(id);
+    }
+
+    /**
+     * Publier.
      */
     @PutMapping("/{id}/publier")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COACH')")
+    @PreAuthorize(
+            "hasAnyRole('ADMIN', 'COACH')"
+    )
     public AnnonceDTO publier(
             @PathVariable Long id
     ) {
-        return annonceService.publier(id);
+        return annonceService
+                .publier(id);
     }
 
     /**
-     * Archiver une annonce.
-     * Accessible uniquement aux administrateurs.
+     * Archiver.
      */
     @PutMapping("/{id}/archiver")
     @PreAuthorize("hasRole('ADMIN')")
     public AnnonceDTO archiver(
             @PathVariable Long id
     ) {
-        return annonceService.archiver(id);
+        return annonceService
+                .archiver(id);
     }
 
     /**
-     * Supprimer définitivement une annonce.
-     * Accessible uniquement aux administrateurs.
+     * Supprimer l'annonce et son image.
      */
     @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @ResponseStatus(
+            HttpStatus.NO_CONTENT
+    )
     @PreAuthorize("hasRole('ADMIN')")
     public void supprimer(
             @PathVariable Long id
     ) {
-        annonceService.supprimer(id);
+        annonceService.supprimer(
+                id
+        );
     }
 }
