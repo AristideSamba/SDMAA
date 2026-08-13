@@ -17,30 +17,46 @@ public class DocumentController {
 
     private final DocumentService service;
 
+    /**
+     * ADMIN :
+     * créer manuellement un document personnel
+     * pour un utilisateur.
+     */
     @PostMapping
     public Document create(
             @RequestParam Long idUtilisateur,
             @RequestParam(required = false) Long idActivite,
             @RequestBody Document document
     ) {
-        return service.create(idUtilisateur, idActivite, document);
+        return service.create(
+                idUtilisateur,
+                idActivite,
+                document
+        );
     }
 
+    /**
+     * ADMIN :
+     * récupérer tous les documents.
+     */
     @GetMapping
     public List<DocumentDTO> getAll() {
         return service.getAll();
     }
 
-    @GetMapping("/{id}")
-    public DocumentDTO getById(@PathVariable Long id) {
-        return service.getById(id);
+    /**
+     * ADHERENT :
+     * récupérer ses documents personnels.
+     */
+    @GetMapping("/me")
+    public List<DocumentDTO> getMyDocuments() {
+        return service.getMyDocuments();
     }
 
-    @GetMapping("/utilisateur/{idUtilisateur}")
-    public List<DocumentDTO> getByUtilisateur(@PathVariable Long idUtilisateur) {
-        return service.getByUtilisateur(idUtilisateur);
-    }
-
+    /**
+     * ADHERENT :
+     * envoyer un document personnel.
+     */
     @PostMapping("/me")
     public DocumentDTO uploadForCurrentUser(
             @RequestParam("file") MultipartFile file,
@@ -48,21 +64,92 @@ public class DocumentController {
             @RequestParam String typeDocument,
             @RequestParam(required = false) LocalDate dateExpiration
     ) {
-        return service.uploadForCurrentUser(file, titre, typeDocument, dateExpiration);
+        return service.uploadForCurrentUser(
+                file,
+                titre,
+                typeDocument,
+                dateExpiration
+        );
     }
 
-    @GetMapping("/me")
-    public List<DocumentDTO> getMyDocuments() {
-        return service.getMyDocuments();
+    /**
+     * MEMBRES AUTHENTIFIÉS :
+     * récupérer les documents publiés
+     * par le club.
+     */
+    @GetMapping("/club")
+    public List<DocumentDTO> getClubDocuments() {
+        return service.getClubDocuments();
     }
 
-    @PutMapping("/{id}/valider")
-    public Document valider(@PathVariable Long id) {
+    /**
+     * ADMIN :
+     * publier un document du club.
+     */
+    @PostMapping("/club")
+    public DocumentDTO uploadClubDocument(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam String titre,
+            @RequestParam String typeDocument,
+            @RequestParam(required = false) LocalDate dateExpiration,
+            @RequestParam(required = false) Long idActivite
+    ) {
+        return service.uploadClubDocument(
+                file,
+                titre,
+                typeDocument,
+                dateExpiration,
+                idActivite
+        );
+    }
+
+    /**
+     * Récupérer un document précis.
+     *
+     * On utilise /detail/{id}
+     * pour éviter les conflits avec
+     * /me ou /club.
+     */
+    @GetMapping("/detail/{id}")
+    public DocumentDTO getById(
+            @PathVariable Long id
+    ) {
+        return service.getById(id);
+    }
+
+    /**
+     * ADMIN :
+     * récupérer les documents
+     * d'un utilisateur précis.
+     */
+    @GetMapping("/utilisateur/{idUtilisateur}")
+    public List<DocumentDTO> getByUtilisateur(
+            @PathVariable Long idUtilisateur
+    ) {
+        return service.getByUtilisateur(
+                idUtilisateur
+        );
+    }
+
+    /**
+     * ADMIN :
+     * valider un document personnel.
+     */
+    @PutMapping("/detail/{id}/valider")
+    public Document valider(
+            @PathVariable Long id
+    ) {
         return service.valider(id);
     }
 
-    @DeleteMapping("/{id}")
-    public void delete(@PathVariable Long id) {
+    /**
+     * ADMIN :
+     * supprimer un document.
+     */
+    @DeleteMapping("/detail/{id}")
+    public void delete(
+            @PathVariable Long id
+    ) {
         service.delete(id);
     }
 }

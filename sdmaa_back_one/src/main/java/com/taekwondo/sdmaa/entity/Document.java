@@ -1,5 +1,6 @@
 package com.taekwondo.sdmaa.entity;
 
+import com.taekwondo.sdmaa.enums.CategorieDocument;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -36,8 +37,7 @@ public class Document {
     private String urlFichier;
 
     /**
-     * Identifiant Cloudinary permettant
-     * de supprimer le fichier plus tard.
+     * Identifiant Cloudinary.
      */
     @Column(
             name = "cloudinary_public_id"
@@ -59,8 +59,8 @@ public class Document {
     private LocalDate dateUpload;
 
     /**
-     * Facultatif car tous les documents
-     * n'ont pas de date d'expiration.
+     * Facultatif :
+     * certains documents n'expirent pas.
      */
     @Column(
             name = "date_expiration"
@@ -73,21 +73,62 @@ public class Document {
     private Boolean estValide;
 
     /**
-     * Document appartenant à un utilisateur.
+     * Permet de distinguer :
+     *
+     * PERSONNEL
+     * CLUB
      */
-    @ManyToOne(optional = false)
+    @Enumerated(EnumType.STRING)
+    @Column(
+            name = "categorie_document",
+            nullable = false
+    )
+    private CategorieDocument categorieDocument;
+
+    /**
+     * Pour un document personnel :
+     * utilisateur != null
+     *
+     * Pour un document du club :
+     * utilisateur = null
+     */
+    @ManyToOne
     @JoinColumn(
             name = "id_utilisateur"
     )
     private Utilisateur utilisateur;
 
     /**
-     * Activité éventuellement associée
-     * au document.
+     * Activité éventuellement associée.
      */
     @ManyToOne
     @JoinColumn(
             name = "id_activite"
     )
     private Activite activite;
+
+    /**
+     * Valeurs par défaut
+     * lors d'une insertion.
+     */
+    @PrePersist
+    public void prePersist() {
+
+        if (dateUpload == null) {
+            dateUpload =
+                    LocalDate.now();
+        }
+
+        if (estValide == null) {
+            estValide =
+                    false;
+        }
+
+        if (
+                categorieDocument == null
+        ) {
+            categorieDocument =
+                    CategorieDocument.PERSONNEL;
+        }
+    }
 }

@@ -6,6 +6,7 @@ import com.taekwondo.sdmaa.entity.Document;
 public class DocumentMapper {
 
     public static DocumentDTO toDTO(Document document) {
+
         return DocumentDTO.builder()
                 .id(document.getIdDocument())
                 .titre(document.getTitre())
@@ -15,33 +16,39 @@ public class DocumentMapper {
                 .dateExpiration(document.getDateExpiration())
                 .estValide(document.getEstValide())
 
+                .categorieDocument(
+                        document.getCategorieDocument()
+                )
+
                 .utilisateurId(
                         document.getUtilisateur() != null
-                                ? document.getUtilisateur().getIdUtilisateur()
+                                ? document.getUtilisateur()
+                                .getIdUtilisateur()
                                 : null
                 )
+
                 .utilisateurNom(
                         document.getUtilisateur() != null
-                                ? document.getUtilisateur().getPrenom() + " " + document.getUtilisateur().getNom()
+                                ? document.getUtilisateur().getPrenom()
+                                + " "
+                                + document.getUtilisateur().getNom()
                                 : null
                 )
 
                 .activiteId(
                         document.getActivite() != null
-                                ? document.getActivite().getIdActivite()
+                                ? document.getActivite()
+                                .getIdActivite()
                                 : null
                 )
+
                 .activiteTitre(
                         document.getActivite() != null
-                                ? document.getActivite().getTitre()
+                                ? document.getActivite()
+                                .getTitre()
                                 : null
                 )
-                .cloudinaryPublicId(
-                        document.getCloudinaryPublicId()
-                )
-                .cloudinaryResourceType(
-                        document.getCloudinaryResourceType()
-                )
+
                 .build();
     }
 }
