@@ -14,35 +14,80 @@ import java.time.LocalDate;
 public class Document {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(
+            strategy = GenerationType.IDENTITY
+    )
     private Long idDocument;
 
-    @Column(name = "nom", nullable = false)
+    @Column(
+            name = "nom",
+            nullable = false
+    )
     private String titre;
 
     @Column(nullable = false)
     private String type;
-    //certificat médical, diplome, passeport etc
 
-    @Column(name = "fichier_url", nullable = false)
+    @Column(
+            name = "fichier_url",
+            nullable = false,
+            length = 1000
+    )
     private String urlFichier;
 
-    @Column(name = "date_upload", nullable = false)
+    /**
+     * Identifiant Cloudinary permettant
+     * de supprimer le fichier plus tard.
+     */
+    @Column(
+            name = "cloudinary_public_id"
+    )
+    private String cloudinaryPublicId;
+
+    /**
+     * image / raw / video
+     */
+    @Column(
+            name = "cloudinary_resource_type"
+    )
+    private String cloudinaryResourceType;
+
+    @Column(
+            name = "date_upload",
+            nullable = false
+    )
     private LocalDate dateUpload;
 
-    @Column(name = "date_expiration", nullable = false)
+    /**
+     * Facultatif car tous les documents
+     * n'ont pas de date d'expiration.
+     */
+    @Column(
+            name = "date_expiration"
+    )
     private LocalDate dateExpiration;
 
-    @Column(name = "est_valide")
+    @Column(
+            name = "est_valide"
+    )
     private Boolean estValide;
 
-    // 🔗 lien utilisateur (obligatoire)
+    /**
+     * Document appartenant à un utilisateur.
+     */
     @ManyToOne(optional = false)
-    @JoinColumn(name = "id_utilisateur")
+    @JoinColumn(
+            name = "id_utilisateur"
+    )
     private Utilisateur utilisateur;
 
-    // 🔗 lien activité (optionnel)
+    /**
+     * Activité éventuellement associée
+     * au document.
+     */
     @ManyToOne
-    @JoinColumn(name = "id_activite")
+    @JoinColumn(
+            name = "id_activite"
+    )
     private Activite activite;
 }

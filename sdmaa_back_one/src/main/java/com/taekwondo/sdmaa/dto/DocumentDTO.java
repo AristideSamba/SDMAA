@@ -24,4 +24,7 @@ public class DocumentDTO {
 
     private Long activiteId;
     private String activiteTitre;
+
+    private String cloudinaryPublicId;
+    private String cloudinaryResourceType;
 }

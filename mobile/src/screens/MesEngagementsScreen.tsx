@@ -546,14 +546,19 @@ export default function MesEngagementsScreen() {
                 .duration(450)
                 .delay(60)}
             >
-              <EngagementsHero
-                total={
-                  statistics.total
-                }
-                confirmed={
-                  statistics.confirmed
-                }
-              />
+              <View style={styles.introSection}>
+                <Text style={styles.introEyebrow}>
+                  MON ESPACE
+                </Text>
+
+                <Text style={styles.introTitle}>
+                  Suivi de mes engagements
+                </Text>
+
+                <Text style={styles.introText}>
+                  Retrouvez vos inscriptions, compétitions et performances sportives.
+                </Text>
+              </View>
             </Reanimated.View>
 
             <StatisticsSection
@@ -674,124 +679,6 @@ function ScreenHeader({
         accessible={false}
       />
     </View>
-  );
-}
-
-function EngagementsHero({
-  total,
-  confirmed,
-}: {
-  total: number;
-  confirmed: number;
-}) {
-  return (
-    <LinearGradient
-      colors={[
-        "#2B1012",
-        COLORS.card,
-        COLORS.backgroundElevated,
-      ]}
-      start={{
-        x: 0,
-        y: 0,
-      }}
-      end={{
-        x: 1,
-        y: 1,
-      }}
-      style={styles.heroCard}
-    >
-      <View style={styles.heroGlow} />
-
-      <View style={styles.heroTopRow}>
-        <View style={styles.heroIcon}>
-          <Ionicons
-            name="ribbon-outline"
-            size={24}
-            color={COLORS.text}
-          />
-        </View>
-
-        <View style={styles.heroBadge}>
-          <View
-            style={styles.heroBadgeDot}
-          />
-
-          <Text
-            style={styles.heroBadgeText}
-          >
-            MON ESPACE
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.heroContent}>
-        <Text style={styles.heroEyebrow}>
-          SDMAA
-        </Text>
-
-        <Text style={styles.heroTitle}>
-          Mes inscriptions
-        </Text>
-
-        <Text
-          style={styles.heroSubtitle}
-        >
-          Retrouvez vos activités,
-          stages, compétitions et
-          performances dans un seul
-          espace.
-        </Text>
-      </View>
-
-      <View style={styles.heroFooter}>
-        <View style={styles.heroStats}>
-          <View>
-            <Text
-              style={styles.heroStatValue}
-            >
-              {total}
-            </Text>
-
-            <Text
-              style={styles.heroStatLabel}
-            >
-              engagements
-            </Text>
-          </View>
-
-          <View
-            style={styles.heroStatDivider}
-          />
-
-          <View>
-            <Text
-              style={styles.heroStatValue}
-            >
-              {confirmed}
-            </Text>
-
-            <Text
-              style={styles.heroStatLabel}
-            >
-              confirmés
-            </Text>
-          </View>
-        </View>
-
-        <View
-          style={styles.heroFooterIcon}
-        >
-          <Ionicons
-            name="checkmark-done-outline"
-            size={22}
-            color={
-              COLORS.textSecondary
-            }
-          />
-        </View>
-      </View>
-    </LinearGradient>
   );
 }
 
@@ -2024,161 +1911,36 @@ const styles = StyleSheet.create({
     height: 46,
   },
 
-  heroCard: {
-    minHeight: 310,
-    overflow: "hidden",
-    padding: 22,
-    borderWidth: 1,
-    borderColor:
-      "rgba(255,255,255,0.06)",
-    borderRadius: 30,
-    shadowColor: COLORS.black,
-    shadowOpacity: 0.34,
-    shadowRadius: 20,
-    shadowOffset: {
-      width: 0,
-      height: 12,
-    },
-    elevation: 8,
+
+  introSection: {
+    marginTop: 2,
+    marginBottom: 18,
+    paddingHorizontal: 2,
   },
 
-  heroGlow: {
-    position: "absolute",
-    top: -72,
-    right: -52,
-    width: 190,
-    height: 190,
-    backgroundColor:
-      "rgba(229,9,20,0.13)",
-    borderRadius: 95,
-  },
-
-  heroTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent:
-      "space-between",
-  },
-
-  heroIcon: {
-    width: 48,
-    height: 48,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor:
-      "rgba(255,255,255,0.08)",
-    borderWidth: 1,
-    borderColor:
-      "rgba(255,255,255,0.08)",
-    borderRadius: 17,
-  },
-
-  heroBadge: {
-    minHeight: 32,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    backgroundColor:
-      "rgba(0,0,0,0.24)",
-    borderWidth: 1,
-    borderColor:
-      "rgba(255,255,255,0.07)",
-    borderRadius: 999,
-  },
-
-  heroBadgeDot: {
-    width: 6,
-    height: 6,
-    marginRight: 8,
-    backgroundColor: COLORS.red,
-    borderRadius: 3,
-  },
-
-  heroBadgeText: {
-    color:
-      COLORS.textSecondary,
-    fontSize: 10,
-    letterSpacing: 1.1,
-    fontFamily: "Inter_700Bold",
-  },
-
-  heroContent: {
-    flex: 1,
-    justifyContent: "center",
-    paddingVertical: 28,
-  },
-
-  heroEyebrow: {
-    marginBottom: 8,
+  introEyebrow: {
     color: COLORS.red,
-    fontSize: 11,
-    letterSpacing: 2.1,
+    fontSize: 10,
+    letterSpacing: 1.5,
     fontFamily: "Inter_700Bold",
   },
 
-  heroTitle: {
-    maxWidth: 290,
-    color: COLORS.text,
-    fontSize: 34,
-    lineHeight: 38,
-    letterSpacing: -1.2,
-    fontFamily: "Inter_700Bold",
-  },
-
-  heroSubtitle: {
-    maxWidth: 305,
-    marginTop: 13,
-    color:
-      COLORS.textSecondary,
-    fontSize: 13,
-    lineHeight: 20,
-    fontFamily:
-      "Inter_400Regular",
-  },
-
-  heroFooter: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent:
-      "space-between",
-  },
-
-  heroStats: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  heroStatDivider: {
-    width: 1,
-    height: 35,
-    marginHorizontal: 18,
-    backgroundColor:
-      "rgba(255,255,255,0.10)",
-  },
-
-  heroStatValue: {
+  introTitle: {
+    marginTop: 6,
     color: COLORS.text,
     fontSize: 24,
-    letterSpacing: -0.7,
+    lineHeight: 30,
+    letterSpacing: -0.5,
     fontFamily: "Inter_700Bold",
   },
 
-  heroStatLabel: {
-    marginTop: 2,
-    color: COLORS.textMuted,
-    fontSize: 10,
-    fontFamily:
-      "Inter_600SemiBold",
-  },
-
-  heroFooterIcon: {
-    width: 40,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor:
-      "rgba(255,255,255,0.05)",
-    borderRadius: 14,
+  introText: {
+    maxWidth: 330,
+    marginTop: 7,
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    lineHeight: 18,
+    fontFamily: "Inter_400Regular",
   },
 
   statisticsContainer: {

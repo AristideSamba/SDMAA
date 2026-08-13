@@ -51,4 +51,11 @@ public class AchatEquipementController {
     ) {
         return service.createForCurrentUser(idEquipement, quantite);
     }
+
+    @PutMapping("/{id}/refuser")
+    public AchatEquipement refuser(
+            @PathVariable Long id
+    ) {
+        return service.refuser(id);
+    }
 }

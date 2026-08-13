@@ -32,25 +32,50 @@ public class EmpruntEquipementService {
             LocalDate dateRetourPrevue
     ) {
         Utilisateur utilisateur = utilisateurRepository.findById(idUtilisateur)
-                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé"));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Utilisateur non trouvé"));
 
         Equipement equipement = equipementRepository.findById(idEquipement)
-                .orElseThrow(() -> new ResourceNotFoundException("Équipement non trouvé"));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Équipement non trouvé"));
+
+        boolean empruntActifExiste =
+                empruntRepository
+                        .existsByUtilisateurIdUtilisateurAndEquipementIdEquipementAndStatutEmpruntIn(
+                                idUtilisateur,
+                                idEquipement,
+                                List.of("en_attente", "en_cours")
+                        );
+
+        if (empruntActifExiste) {
+            throw new BusinessException(
+                    "Vous avez déjà une demande ou un emprunt en cours pour cet équipement"
+            );
+        }
 
         if (!Boolean.TRUE.equals(equipement.getEmpruntable())) {
-            throw new BusinessException("Cet équipement n'est pas disponible à l'emprunt");
+            throw new BusinessException(
+                    "Cet équipement n'est pas disponible à l'emprunt"
+            );
         }
 
         if (quantite == null || quantite <= 0) {
-            throw new BusinessException("La quantité doit être supérieure à 0");
+            throw new BusinessException(
+                    "La quantité doit être supérieure à 0"
+            );
         }
 
-        if (dateRetourPrevue == null || dateRetourPrevue.isBefore(LocalDate.now())) {
-            throw new BusinessException("La date de retour prévue est invalide");
+        if (dateRetourPrevue == null ||
+                dateRetourPrevue.isBefore(LocalDate.now())) {
+            throw new BusinessException(
+                    "La date de retour prévue est invalide"
+            );
         }
 
         if (equipement.getQuantiteDisponible() < quantite) {
-            throw new BusinessException("Stock insuffisant pour cet emprunt");
+            throw new BusinessException(
+                    "Stock insuffisant pour cet emprunt"
+            );
         }
 
         EmpruntEquipement emprunt = EmpruntEquipement.builder()

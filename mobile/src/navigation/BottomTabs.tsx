@@ -21,6 +21,7 @@ import {
 
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import DashboardScreen from "../screens/DashboardScreen";
@@ -32,8 +33,8 @@ import ProfileScreen from "../screens/ProfilScreen";
 const Tab = createBottomTabNavigator();
 
 const COLORS = {
-  background: "#121212",
-  tabBar: "rgba(20,20,20,0.92)",
+  background: "#000000",
+  tabBar: "rgba(3, 3, 3, 0.89)",
   tabBarBorder: "rgba(255,255,255,0.08)",
 
   activeBackground: "rgba(229,9,20,0.16)",
@@ -286,7 +287,8 @@ export default function BottomTabs() {
         );
 
   return (
-    <Tab.Navigator
+    <View style={styles.root}>
+      <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
 
@@ -330,8 +332,8 @@ export default function BottomTabs() {
         tabBarStyle: {
           position: "absolute",
 
-          left: 12,
-          right: 12,
+          left: 16,
+          right: 16,
           bottom: bottomSpacing,
 
           height: 72,
@@ -339,7 +341,7 @@ export default function BottomTabs() {
           paddingTop: 7,
           paddingBottom: 7,
           paddingHorizontal: 6,
-          marginHorizontal: 9,
+          marginHorizontal: 20,
 
           backgroundColor:
             "transparent",
@@ -348,11 +350,12 @@ export default function BottomTabs() {
           borderWidth: 1,
           borderColor:
             COLORS.tabBarBorder,
-          borderRadius: 27,
+          borderRadius: 50,
 
           overflow: "hidden",
 
           elevation: 16,
+          zIndex: 2,
 
           shadowColor: "#000000",
           shadowOffset: {
@@ -365,7 +368,7 @@ export default function BottomTabs() {
 
         tabBarItemStyle: {
           height: 58,
-          borderRadius: 20,
+          borderRadius: 24,
         },
 
         tabBarLabelStyle: {
@@ -445,14 +448,55 @@ export default function BottomTabs() {
         name="Profil"
         component={ProfileScreen}
       />
-    </Tab.Navigator>
+      </Tab.Navigator>
+
+      <LinearGradient
+        pointerEvents="none"
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        colors={[
+          "rgba(18,18,18,0)",
+          "rgba(128,0,32,0.10)",
+          "rgba(128,0,32,0.22)",
+          "rgba(49, 0, 13, 0.91)",
+        ]}
+        locations={[
+          0,
+          0.30,
+          0.62,
+          1,
+        ]}
+        style={[
+          styles.bottomNavigationFade,
+          {
+            height:
+              38 + bottomSpacing,
+          },
+        ]}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor:
+      COLORS.background,
+  },
+
+  bottomNavigationFade: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 0,
+  },
+
   tabBarOverlay: {
     backgroundColor:
       COLORS.tabBar,
+    borderRadius: 34,
   },
 
   tabButton: {
@@ -464,7 +508,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 1,
 
     overflow: "hidden",
-    borderRadius: 20,
+    borderRadius: 24,
   },
 
   activeBackground: {
@@ -481,7 +525,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor:
       COLORS.activeBorder,
-    borderRadius: 18,
+    borderRadius: 22,
   },
 
   animatedContent: {

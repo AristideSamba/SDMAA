@@ -1,7 +1,5 @@
 package com.taekwondo.sdmaa.service;
 
-import org.jsoup.Jsoup;
-import org.jsoup.safety.Safelist;
 import com.taekwondo.sdmaa.dto.DocumentDTO;
 import com.taekwondo.sdmaa.entity.Activite;
 import com.taekwondo.sdmaa.entity.Document;
@@ -16,13 +14,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -32,17 +26,63 @@ public class DocumentService {
     private final UtilisateurRepository utilisateurRepository;
     private final ActiviteRepository activiteRepository;
     private final UtilisateurService utilisateurService;
+    private final CloudinaryDocumentService cloudinaryDocumentService;
 
-    public Document create(Long idUtilisateur, Long idActivite, Document document) {
-
-        Utilisateur utilisateur = utilisateurRepository.findById(idUtilisateur)
-                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé"));
+    /**
+     * ADMIN :
+     * créer manuellement un document
+     * pour un utilisateur.
+     */
+    public Document create(
+            Long idUtilisateur,
+            Long idActivite,
+            Document document
+    ) {
+        Utilisateur utilisateur =
+                utilisateurRepository.findById(idUtilisateur)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Utilisateur non trouvé"
+                                )
+                        );
 
         Activite activite = null;
 
         if (idActivite != null) {
-            activite = activiteRepository.findById(idActivite)
-                    .orElseThrow(() -> new ResourceNotFoundException("Activité non trouvée"));
+            activite =
+                    activiteRepository.findById(idActivite)
+                            .orElseThrow(() ->
+                                    new ResourceNotFoundException(
+                                            "Activité non trouvée"
+                                    )
+                            );
+        }
+
+        if (
+                document.getTitre() == null
+                        || document.getTitre().isBlank()
+        ) {
+            throw new BusinessException(
+                    "Le titre du document est obligatoire"
+            );
+        }
+
+        if (
+                document.getType() == null
+                        || document.getType().isBlank()
+        ) {
+            throw new BusinessException(
+                    "Le type du document est obligatoire"
+            );
+        }
+
+        if (
+                document.getUrlFichier() == null
+                        || document.getUrlFichier().isBlank()
+        ) {
+            throw new BusinessException(
+                    "L'URL du document est obligatoire"
+            );
         }
 
         document.setUtilisateur(utilisateur);
@@ -53,6 +93,10 @@ public class DocumentService {
         return documentRepository.save(document);
     }
 
+    /**
+     * ADMIN :
+     * récupérer tous les documents.
+     */
     public List<DocumentDTO> getAll() {
         return documentRepository.findAll()
                 .stream()
@@ -60,81 +104,243 @@ public class DocumentService {
                 .toList();
     }
 
-    public List<DocumentDTO> getByUtilisateur(Long idUtilisateur) {
-        return documentRepository.findByUtilisateurIdUtilisateur(idUtilisateur)
-                .stream()
-                .map(DocumentMapper::toDTO)
-                .toList();
-    }
-
-    public List<DocumentDTO> getMyDocuments() {
-        Utilisateur utilisateur = utilisateurService.getUtilisateurConnecte();
+    /**
+     * ADMIN :
+     * récupérer les documents
+     * d'un utilisateur.
+     */
+    public List<DocumentDTO> getByUtilisateur(
+            Long idUtilisateur
+    ) {
+        if (
+                !utilisateurRepository.existsById(
+                        idUtilisateur
+                )
+        ) {
+            throw new ResourceNotFoundException(
+                    "Utilisateur non trouvé"
+            );
+        }
 
         return documentRepository
-                .findByUtilisateurIdUtilisateur(utilisateur.getIdUtilisateur())
+                .findByUtilisateurIdUtilisateur(
+                        idUtilisateur
+                )
                 .stream()
                 .map(DocumentMapper::toDTO)
                 .toList();
     }
 
+    /**
+     * ADHERENT :
+     * récupérer ses propres documents.
+     */
+    public List<DocumentDTO> getMyDocuments() {
+        Utilisateur utilisateur =
+                utilisateurService
+                        .getUtilisateurConnecte();
+
+        return documentRepository
+                .findByUtilisateurIdUtilisateur(
+                        utilisateur.getIdUtilisateur()
+                )
+                .stream()
+                .map(DocumentMapper::toDTO)
+                .toList();
+    }
+
+    /**
+     * Récupérer un document par son id.
+     */
     public DocumentDTO getById(Long id) {
-        Document doc = documentRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Document non trouvé"));
+        Document document =
+                documentRepository.findById(id)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Document non trouvé"
+                                )
+                        );
 
-        return DocumentMapper.toDTO(doc);
+        return DocumentMapper.toDTO(
+                document
+        );
     }
 
-    public Document valider(Long id) {
-        Document doc = documentRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Document non trouvé"));
-
-        doc.setEstValide(true);
-
-        return documentRepository.save(doc);
-    }
-
-    public void delete(Long id) {
-        Document doc = documentRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Document non trouvé"));
-
-        documentRepository.delete(doc);
-    }
-
+    /**
+     * ADHERENT :
+     * envoyer un document personnel.
+     *
+     * Le fichier est stocké sur Cloudinary.
+     * Le document reste en attente de validation
+     * par l'administration.
+     */
     public DocumentDTO uploadForCurrentUser(
             MultipartFile file,
             String titre,
             String typeDocument,
             LocalDate dateExpiration
     ) {
-        Utilisateur utilisateur = utilisateurService.getUtilisateurConnecte();
+        Utilisateur utilisateur =
+                utilisateurService
+                        .getUtilisateurConnecte();
 
-        if (file == null || file.isEmpty()) {
-            throw new BusinessException("Le fichier est obligatoire");
+        if (
+                titre == null
+                        || titre.isBlank()
+        ) {
+            throw new BusinessException(
+                    "Le titre du document est obligatoire"
+            );
         }
 
-        try {
-            String uploadDir = "uploads/documents/";
-            Files.createDirectories(Paths.get(uploadDir));
-
-            String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
-            Path filePath = Paths.get(uploadDir, fileName);
-
-            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-
-            Document document = Document.builder()
-                    .titre(titre)
-                    .type(typeDocument)
-                    .urlFichier("/uploads/documents/" + fileName)
-                    .dateUpload(LocalDate.now())
-                    .dateExpiration(dateExpiration)
-                    .estValide(true)
-                    .utilisateur(utilisateur)
-                    .build();
-
-            return DocumentMapper.toDTO(documentRepository.save(document));
-
-        } catch (IOException e) {
-            throw new BusinessException("Erreur lors de l'envoi du fichier");
+        if (
+                typeDocument == null
+                        || typeDocument.isBlank()
+        ) {
+            throw new BusinessException(
+                    "Le type du document est obligatoire"
+            );
         }
+
+        if (
+                dateExpiration != null
+                        && dateExpiration.isBefore(
+                        LocalDate.now()
+                )
+        ) {
+            throw new BusinessException(
+                    "La date d'expiration ne peut pas être antérieure à aujourd'hui"
+            );
+        }
+
+        Map<String, String> uploadResult =
+                cloudinaryDocumentService.uploader(
+                        file,
+                        "sdmaa/documents"
+                );
+
+        String url =
+                uploadResult.get("url");
+
+        String publicId =
+                uploadResult.get("publicId");
+
+        String resourceType =
+                uploadResult.get(
+                        "resourceType"
+                );
+
+        if (
+                url == null
+                        || url.isBlank()
+        ) {
+            throw new BusinessException(
+                    "Cloudinary n'a pas retourné d'URL valide"
+            );
+        }
+
+        Document document =
+                Document.builder()
+                        .titre(titre.trim())
+                        .type(typeDocument.trim())
+                        .urlFichier(url)
+                        .cloudinaryPublicId(
+                                publicId
+                        )
+                        .cloudinaryResourceType(
+                                resourceType
+                        )
+                        .dateUpload(
+                                LocalDate.now()
+                        )
+                        .dateExpiration(
+                                dateExpiration
+                        )
+
+                        /**
+                         * Important :
+                         * l'adhérent ne valide pas
+                         * lui-même son document.
+                         */
+                        .estValide(false)
+
+                        .utilisateur(
+                                utilisateur
+                        )
+                        .activite(null)
+                        .build();
+
+        return DocumentMapper.toDTO(
+                documentRepository.save(
+                        document
+                )
+        );
+    }
+
+    /**
+     * ADMIN :
+     * valider un document.
+     */
+    public Document valider(Long id) {
+        Document document =
+                documentRepository.findById(id)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Document non trouvé"
+                                )
+                        );
+
+        if (
+                Boolean.TRUE.equals(
+                        document.getEstValide()
+                )
+        ) {
+            throw new BusinessException(
+                    "Ce document a déjà été validé"
+            );
+        }
+
+        document.setEstValide(true);
+
+        return documentRepository.save(
+                document
+        );
+    }
+
+    /**
+     * ADMIN :
+     * supprimer un document.
+     *
+     * Le fichier est d'abord supprimé
+     * de Cloudinary puis de la base.
+     */
+    public void delete(Long id) {
+        Document document =
+                documentRepository.findById(id)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Document non trouvé"
+                                )
+                        );
+
+        String publicId =
+                document.getCloudinaryPublicId();
+
+        String resourceType =
+                document.getCloudinaryResourceType();
+
+        if (
+                publicId != null
+                        && !publicId.isBlank()
+        ) {
+            cloudinaryDocumentService.supprimer(
+                    publicId,
+                    resourceType
+            );
+        }
+
+        documentRepository.delete(
+                document
+        );
     }
 }

@@ -24,6 +24,7 @@ import ModifierProfilScreen from "../screens/ModifierProfilScreen";
 import LoginScreen from "../screens/LoginScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
 import MesEngagementsScreen from "../screens/MesEngagementsScreen";
+import MesCommandesScreen from "../screens/MesCommandesScreen";
 
 import BottomTabNavigator from "./BottomTabs";
 
@@ -52,6 +53,12 @@ export type RootStackParamList = {
    * l'utilisateur est inscrit.
    */
   MesEngagements: undefined;
+
+  /**
+   * Écran affichant les achats
+   * et les emprunts de l'utilisateur.
+   */
+  MesCommandes: undefined;
 
   /**
    * Écran de modification du profil.
@@ -158,6 +165,14 @@ export default function RootNavigator() {
           />
 
           <Stack.Screen
+            name="MesCommandes"
+            component={MesCommandesScreen}
+            options={{
+              animation: "slide_from_right",
+            }}
+          />
+
+          <Stack.Screen
             name="ActiviteDetails"
             component={ActiviteDetailsScreen}
             options={{
@@ -195,12 +210,16 @@ export default function RootNavigator() {
 
           <Stack.Screen
             name="NotificationsParametres"
-            component={NotificationsParametresScreen}
+            component={
+              NotificationsParametresScreen
+            }
           />
 
           <Stack.Screen
             name="Confidentialite"
-            component={ConfidentialiteScreen}
+            component={
+              ConfidentialiteScreen
+            }
           />
         </>
       ) : (

@@ -657,12 +657,37 @@ if (
                   .duration(450)
                   .delay(70)}
               >
-                <NotificationsHeader
-                  total={
-                    notifications.length
-                  }
-                  unreadCount={unreadCount}
-                />
+                <View style={styles.introSection}>
+                  <Text style={styles.introEyebrow}>
+                    CENTRE DE NOTIFICATIONS
+                  </Text>
+
+                  <Text style={styles.introTitle}>
+                    Restez informé
+                  </Text>
+
+                  <Text style={styles.introText}>
+                    Retrouvez les rappels, changements et informations importantes du club.
+                  </Text>
+
+                  <View style={styles.introStatusRow}>
+                    <View style={styles.introStatusPill}>
+                      <View
+                        style={[
+                          styles.introStatusDot,
+                          unreadCount === 0 &&
+                            styles.introStatusDotRead,
+                        ]}
+                      />
+
+                      <Text style={styles.introStatusText}>
+                        {unreadCount > 0
+                          ? `${unreadCount} non lue${unreadCount > 1 ? "s" : ""}`
+                          : "Vous êtes à jour"}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
               </Reanimated.View>
 
               {error ? (
@@ -794,123 +819,6 @@ if (
 /* -------------------------------------------------------------------------- */
 /*                                SUBCOMPONENTS                               */
 /* -------------------------------------------------------------------------- */
-
-function NotificationsHeader({
-  total,
-  unreadCount,
-}: {
-  total: number;
-  unreadCount: number;
-}) {
-  return (
-    <LinearGradient
-      colors={[
-        "#2B1012",
-        COLORS.card,
-        COLORS.backgroundElevated,
-      ]}
-      start={{
-        x: 0,
-        y: 0,
-      }}
-      end={{
-        x: 1,
-        y: 1,
-      }}
-      style={styles.heroCard}
-    >
-      <View style={styles.heroGlow} />
-
-      <View style={styles.heroTopRow}>
-        <View style={styles.heroIcon}>
-          <Ionicons
-            name="notifications"
-            size={23}
-            color={COLORS.text}
-          />
-        </View>
-
-        <View style={styles.heroBadge}>
-          <View
-            style={[
-              styles.heroBadgeDot,
-              unreadCount === 0 &&
-                styles.heroBadgeDotRead,
-            ]}
-          />
-
-          <Text style={styles.heroBadgeText}>
-            {unreadCount > 0
-              ? `${unreadCount} NON LUE${
-                  unreadCount > 1 ? "S" : ""
-                }`
-              : "À JOUR"}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.heroContent}>
-        <Text style={styles.heroEyebrow}>
-          SDMAA
-        </Text>
-
-        <Text style={styles.heroTitle}>
-          Restez informé
-        </Text>
-
-        <Text style={styles.heroSubtitle}>
-          Retrouvez ici les changements,
-          rappels et informations importantes
-          concernant le club.
-        </Text>
-      </View>
-
-      <View style={styles.heroFooter}>
-        <View style={styles.heroStats}>
-          <View>
-            <Text
-              style={styles.heroStatValue}
-            >
-              {total}
-            </Text>
-
-            <Text
-              style={styles.heroStatLabel}
-            >
-              notifications
-            </Text>
-          </View>
-
-          <View
-            style={styles.heroStatDivider}
-          />
-
-          <View>
-            <Text
-              style={styles.heroStatValue}
-            >
-              {unreadCount}
-            </Text>
-
-            <Text
-              style={styles.heroStatLabel}
-            >
-              à consulter
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.heroFooterIcon}>
-          <Ionicons
-            name="mail-unread-outline"
-            size={21}
-            color={COLORS.textSecondary}
-          />
-        </View>
-      </View>
-    </LinearGradient>
-  );
-}
 
 function NotificationCard({
   notification,
@@ -1544,159 +1452,70 @@ const styles = StyleSheet.create({
     height: 46,
   },
 
-  heroCard: {
-    minHeight: 310,
-    overflow: "hidden",
-    padding: 22,
-    borderWidth: 1,
-    borderColor:
-      "rgba(255,255,255,0.06)",
-    borderRadius: 30,
-    shadowColor: COLORS.black,
-    shadowOpacity: 0.34,
-    shadowRadius: 20,
-    shadowOffset: {
-      width: 0,
-      height: 12,
-    },
-    elevation: 8,
+
+  introSection: {
+    marginTop: 2,
+    marginBottom: 6,
+    paddingHorizontal: 2,
   },
 
-  heroGlow: {
-    position: "absolute",
-    top: -72,
-    right: -52,
-    width: 190,
-    height: 190,
-    backgroundColor:
-      "rgba(229,9,20,0.13)",
-    borderRadius: 95,
-  },
-
-  heroTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-
-  heroIcon: {
-    width: 48,
-    height: 48,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor:
-      "rgba(255,255,255,0.08)",
-    borderWidth: 1,
-    borderColor:
-      "rgba(255,255,255,0.08)",
-    borderRadius: 17,
-  },
-
-  heroBadge: {
-    minHeight: 32,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    backgroundColor:
-      "rgba(0,0,0,0.24)",
-    borderWidth: 1,
-    borderColor:
-      "rgba(255,255,255,0.07)",
-    borderRadius: 999,
-  },
-
-  heroBadgeDot: {
-    width: 6,
-    height: 6,
-    marginRight: 8,
-    backgroundColor: COLORS.red,
-    borderRadius: 3,
-  },
-
-  heroBadgeDotRead: {
-    backgroundColor: COLORS.textMuted,
-  },
-
-  heroBadgeText: {
-    color: COLORS.textSecondary,
-    fontSize: 10,
-    letterSpacing: 1.1,
-    fontFamily: "Inter_700Bold",
-  },
-
-  heroContent: {
-    flex: 1,
-    justifyContent: "center",
-    paddingVertical: 28,
-  },
-
-  heroEyebrow: {
-    marginBottom: 8,
+  introEyebrow: {
     color: COLORS.red,
-    fontSize: 11,
-    letterSpacing: 2.1,
+    fontSize: 10,
+    letterSpacing: 1.5,
     fontFamily: "Inter_700Bold",
   },
 
-  heroTitle: {
-    maxWidth: 280,
+  introTitle: {
+    marginTop: 6,
     color: COLORS.text,
-    fontSize: 34,
-    lineHeight: 38,
-    letterSpacing: -1.2,
+    fontSize: 24,
+    lineHeight: 30,
+    letterSpacing: -0.5,
     fontFamily: "Inter_700Bold",
   },
 
-  heroSubtitle: {
-    maxWidth: 300,
-    marginTop: 13,
+  introText: {
+    maxWidth: 335,
+    marginTop: 7,
     color: COLORS.textSecondary,
-    fontSize: 13,
-    lineHeight: 20,
+    fontSize: 12,
+    lineHeight: 18,
     fontFamily: "Inter_400Regular",
   },
 
-  heroFooter: {
+  introStatusRow: {
     flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
+    marginTop: 13,
   },
 
-  heroStats: {
+  introStatusPill: {
+    minHeight: 32,
     flexDirection: "row",
     alignItems: "center",
+    paddingHorizontal: 11,
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.borderSoft,
+    borderRadius: 999,
   },
 
-  heroStatDivider: {
-    width: 1,
-    height: 35,
-    marginHorizontal: 18,
-    backgroundColor:
-      "rgba(255,255,255,0.10)",
+  introStatusDot: {
+    width: 7,
+    height: 7,
+    marginRight: 8,
+    backgroundColor: COLORS.red,
+    borderRadius: 999,
   },
 
-  heroStatValue: {
-    color: COLORS.text,
-    fontSize: 24,
-    letterSpacing: -0.7,
-    fontFamily: "Inter_700Bold",
+  introStatusDotRead: {
+    backgroundColor: COLORS.textMuted,
   },
 
-  heroStatLabel: {
-    marginTop: 2,
-    color: COLORS.textMuted,
+  introStatusText: {
+    color: COLORS.textSecondary,
     fontSize: 10,
-    fontFamily: "Inter_600SemiBold",
-  },
-
-  heroFooterIcon: {
-    width: 40,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor:
-      "rgba(255,255,255,0.05)",
-    borderRadius: 14,
+    fontFamily: "Inter_700Bold",
   },
 
   sectionHeader: {

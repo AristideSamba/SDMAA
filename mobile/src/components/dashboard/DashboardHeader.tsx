@@ -54,6 +54,8 @@ const COLORS = {
   textMuted: "#7A7A7A",
   border: "#2F2F2F",
   red: "#E50914",
+  weekBlue: "#182633",
+  weekBlueAccent: "#60A5FA",
 };
 
 function getFirstName(fullName?: string): string {
@@ -307,10 +309,6 @@ export default function DashboardHeader({
               <Text style={styles.greeting}>
                 Bonjour {firstName}
               </Text>
-
-              <Text style={styles.subtitle}>
-                Voici l’essentiel de votre espace membre.
-              </Text>
             </View>
           </View>
         </View>
@@ -432,7 +430,7 @@ export default function DashboardHeader({
             <Ionicons
               name="pulse-outline"
               size={21}
-              color={COLORS.red}
+              color={COLORS.weekBlueAccent}
             />
           </View>
         </View>
@@ -555,7 +553,7 @@ const styles = StyleSheet.create({
   },
 
   eyebrow: {
-    color: COLORS.red,
+    color: "#ffffff",
     fontSize: 9,
     letterSpacing: 1.35,
     fontFamily: "Inter_700Bold",
@@ -804,9 +802,9 @@ const styles = StyleSheet.create({
   weekCard: {
     marginTop: 14,
     padding: 18,
-    backgroundColor: COLORS.card,
+    backgroundColor: COLORS.weekBlue,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: "rgba(96,165,250,0.18)",
     borderRadius: 24,
   },
 
@@ -817,7 +815,7 @@ const styles = StyleSheet.create({
   },
 
   weekEyebrow: {
-    color: COLORS.textMuted,
+    color: "#8DB9E8",
     fontSize: 9,
     letterSpacing: 1.15,
     fontFamily: "Inter_700Bold",
@@ -836,7 +834,9 @@ const styles = StyleSheet.create({
     height: 42,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(229,9,20,0.10)",
+    backgroundColor: "rgba(96,165,250,0.14)",
+    borderWidth: 1,
+    borderColor: "rgba(96,165,250,0.16)",
     borderRadius: 14,
   },
 
@@ -860,7 +860,7 @@ const styles = StyleSheet.create({
 
   weekStatLabel: {
     marginTop: 4,
-    color: COLORS.textMuted,
+    color: "#9AB4CC",
     fontSize: 9,
     textAlign: "center",
     fontFamily: "Inter_500Medium",
@@ -869,7 +869,7 @@ const styles = StyleSheet.create({
   statDivider: {
     width: 1,
     height: 45,
-    backgroundColor: COLORS.border,
+    backgroundColor: "rgba(148,183,216,0.18)",
   },
 
   buttonPressed: {

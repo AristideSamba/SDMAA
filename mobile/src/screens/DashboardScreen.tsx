@@ -132,6 +132,14 @@ const COLORS = {
   red: "#E50914",
   green: "#34D399",
   amber: "#FBBF24",
+
+  engagementCard: "#172733",
+  engagementFeatured: "#20374A",
+  engagementAccent: "#60A5FA",
+
+  announcementCard: "#29231A",
+  announcementFeatured: "#321C20",
+  announcementAccent: "#F59E0B",
 };
 
 const ROUTES = {
@@ -1200,7 +1208,7 @@ export default function DashboardScreen() {
         >
           <SectionHeader
             eyebrow="VOTRE AGENDA"
-            title="Mes prochains engagements"
+            title="Mes engagements"
             actionLabel="Voir tous"
             onPressAction={openEngagements}
           />
@@ -1341,14 +1349,23 @@ function EngagementPreviewCard({
       accessibilityLabel={`Voir ${engagement.activiteTitre || "cet engagement"}`}
       style={({ pressed }) => [
         styles.engagementCard,
-        featured && styles.engagementCardFeatured,
-        pressed && styles.pressablePressed,
+        featured &&
+          styles.engagementCardFeatured,
+        featured &&
+          isCompetitionEngagement &&
+          styles.engagementCompetitionFeatured,
+        pressed &&
+          styles.pressablePressed,
       ]}
     >
       <View
         style={[
           styles.engagementIcon,
-          featured && styles.engagementIconFeatured,
+          featured &&
+            styles.engagementIconFeatured,
+          featured &&
+            isCompetitionEngagement &&
+            styles.engagementCompetitionIconFeatured,
         ]}
       >
         <Ionicons
@@ -1359,9 +1376,12 @@ function EngagementPreviewCard({
           }
           size={22}
           color={
-            featured
-              ? COLORS.text
-              : COLORS.red
+            featured &&
+            isCompetitionEngagement
+              ? COLORS.amber
+              : featured
+                ? COLORS.text
+                : COLORS.engagementAccent
           }
         />
       </View>
@@ -1553,7 +1573,7 @@ function AnnouncementCard({
           color={
             featured
               ? COLORS.text
-              : COLORS.red
+              : COLORS.announcementAccent
           }
         />
       </View>
@@ -1749,15 +1769,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 11,
     padding: 14,
-    backgroundColor: COLORS.card,
+    backgroundColor: COLORS.engagementCard,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: "rgba(96,165,250,0.14)",
     borderRadius: 20,
   },
 
   engagementCardFeatured: {
-    backgroundColor: "#241617",
-    borderColor: "rgba(229,9,20,0.22)",
+    backgroundColor: COLORS.engagementFeatured,
+    borderColor: "rgba(96,165,250,0.30)",
+  },
+
+  engagementCompetitionFeatured: {
+    backgroundColor: "#29253A",
+    borderColor: "rgba(251,191,36,0.28)",
   },
 
   engagementIcon: {
@@ -1766,12 +1791,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
-    backgroundColor: "rgba(229,9,20,0.10)",
+    backgroundColor: "rgba(96,165,250,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(96,165,250,0.12)",
     borderRadius: 16,
   },
 
   engagementIconFeatured: {
-    backgroundColor: COLORS.red,
+    backgroundColor: "rgba(96,165,250,0.24)",
+    borderColor: "rgba(96,165,250,0.22)",
+  },
+
+  engagementCompetitionIconFeatured: {
+    backgroundColor: "rgba(251,191,36,0.12)",
+    borderColor: "rgba(251,191,36,0.22)",
   },
 
   engagementContent: {
@@ -1825,7 +1858,7 @@ const styles = StyleSheet.create({
   metadataText: {
     flexShrink: 1,
     marginLeft: 4,
-    color: COLORS.textMuted,
+    color: "#9FB2C2",
     fontSize: 9,
     fontFamily: "Inter_500Medium",
   },
@@ -1844,15 +1877,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 11,
     padding: 14,
-    backgroundColor: COLORS.card,
+    backgroundColor: COLORS.announcementCard,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: "rgba(245,158,11,0.13)",
     borderRadius: 19,
   },
 
   announcementCardFeatured: {
-    backgroundColor: "#241617",
-    borderColor: "rgba(229,9,20,0.20)",
+    backgroundColor: COLORS.announcementFeatured,
+    borderColor: "rgba(229,9,20,0.24)",
   },
 
   announcementIcon: {
@@ -1861,12 +1894,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
-    backgroundColor: "rgba(229,9,20,0.10)",
+    backgroundColor: "rgba(245,158,11,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(245,158,11,0.13)",
     borderRadius: 14,
   },
 
   announcementIconFeatured: {
-    backgroundColor: COLORS.red,
+    backgroundColor: "rgba(229,9,20,0.78)",
+    borderColor: "rgba(229,9,20,0.30)",
   },
 
   announcementContent: {
@@ -1881,7 +1917,7 @@ const styles = StyleSheet.create({
 
   announcementText: {
     marginTop: 5,
-    color: COLORS.textSecondary,
+    color: "#C7BDAF",
     fontSize: 11,
     lineHeight: 17,
     fontFamily: "Inter_400Regular",

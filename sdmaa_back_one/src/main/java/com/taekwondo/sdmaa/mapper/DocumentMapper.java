@@ -36,6 +36,12 @@ public class DocumentMapper {
                                 ? document.getActivite().getTitre()
                                 : null
                 )
+                .cloudinaryPublicId(
+                        document.getCloudinaryPublicId()
+                )
+                .cloudinaryResourceType(
+                        document.getCloudinaryResourceType()
+                )
                 .build();
     }
 }
