@@ -456,9 +456,9 @@ export default function BottomTabs() {
         end={{ x: 0, y: 1 }}
         colors={[
           "rgba(18,18,18,0)",
-          "rgba(128,0,32,0.10)",
-          "rgba(128,0,32,0.22)",
-          "rgba(49, 0, 13, 0.91)",
+          "rgba(79, 1, 20, 0.1)",
+          "rgba(40, 1, 10, 0.86)",
+          "rgba(13, 1, 4, 0.91)",
         ]}
         locations={[
           0,

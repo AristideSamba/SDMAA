@@ -1,6 +1,12 @@
 // src/screens/DocumentsScreen.tsx
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
 import {
   ActivityIndicator,
   Alert,
@@ -15,17 +21,39 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { useIsFocused } from "@react-navigation/native";
 import * as DocumentPicker from "expo-document-picker";
-import Reanimated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import Reanimated, {
+  FadeInDown,
+  FadeInUp,
+} from "react-native-reanimated";
+
 import api from "../services/api";
 
-type DocumentFilter = "TOUS" | "EN_ATTENTE" | "VALIDES" | "EXPIRES";
-type DocumentStatusVariant = "waiting" | "success" | "danger" | "neutral";
+type DocumentsTab =
+  | "PERSONNELS"
+  | "CLUB";
+
+type DocumentFilter =
+  | "TOUS"
+  | "EN_ATTENTE"
+  | "VALIDES"
+  | "EXPIRES";
+
+type StatusVariant =
+  | "waiting"
+  | "success"
+  | "danger"
+  | "neutral";
 
 interface DocumentDTO {
   id: number;
@@ -35,8 +63,11 @@ interface DocumentDTO {
   dateUpload?: string | null;
   dateExpiration?: string | null;
   estValide?: boolean | null;
+  categorieDocument?: string | null;
+
   utilisateurId?: number | null;
   utilisateurNom?: string | null;
+
   activiteId?: number | null;
   activiteTitre?: string | null;
 }
@@ -50,7 +81,7 @@ interface SelectedDocument {
 
 interface StatusInfo {
   label: string;
-  variant: DocumentStatusVariant;
+  variant: StatusVariant;
   icon: keyof typeof Ionicons.glyphMap;
 }
 
@@ -73,7 +104,10 @@ const COLORS = {
   danger: "#F87171",
 };
 
-const DOCUMENT_FILTERS: Array<{ id: DocumentFilter; label: string }> = [
+const FILTERS: Array<{
+  id: DocumentFilter;
+  label: string;
+}> = [
   { id: "TOUS", label: "Tous" },
   { id: "EN_ATTENTE", label: "En attente" },
   { id: "VALIDES", label: "Validés" },
@@ -87,619 +121,1033 @@ const DOCUMENT_TYPES = [
   "Autorisation parentale",
   "Diplôme",
   "Autre",
-];
+] as const;
+
+type DocumentType =
+  (typeof DOCUMENT_TYPES)[number];
+
+const DEFAULT_DOCUMENT_TYPE:
+  DocumentType =
+  "Certificat médical";
 
 export default function DocumentsScreen() {
   const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();
 
-  const [documents, setDocuments] = useState<DocumentDTO[]>([]);
-  const [selectedFilter, setSelectedFilter] = useState<DocumentFilter>("TOUS");
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState("");
+  const [selectedTab, setSelectedTab] =
+    useState<DocumentsTab>("PERSONNELS");
 
-  const [uploadModalVisible, setUploadModalVisible] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<SelectedDocument | null>(null);
-  const [titre, setTitre] = useState("");
-  const [typeDocument, setTypeDocument] = useState(DOCUMENT_TYPES[0]);
-  const [dateExpiration, setDateExpiration] = useState("");
+  const [selectedFilter, setSelectedFilter] =
+    useState<DocumentFilter>("TOUS");
 
-  const fetchDocuments = useCallback(async () => {
-    try {
-      setError("");
+  const [myDocuments, setMyDocuments] =
+    useState<DocumentDTO[]>([]);
 
-      const response = await api.get<DocumentDTO[]>("/documents/me");
+  const [clubDocuments, setClubDocuments] =
+    useState<DocumentDTO[]>([]);
 
-      setDocuments(Array.isArray(response.data) ? response.data : []);
-    } catch (requestError: any) {
-      console.error("Erreur chargement documents :", requestError);
+  const [loading, setLoading] =
+    useState(true);
 
-      setError(
-        requestError?.response?.data?.message ||
-          requestError?.response?.data?.error ||
-          "Impossible de charger vos documents pour le moment."
-      );
+  const [refreshing, setRefreshing] =
+    useState(false);
 
-      setDocuments([]);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+  const [error, setError] =
+    useState("");
+
+  const [uploadModalVisible, setUploadModalVisible] =
+    useState(false);
+
+  const [uploading, setUploading] =
+    useState(false);
+
+  const [selectedFile, setSelectedFile] =
+    useState<SelectedDocument | null>(null);
+
+  const [titre, setTitre] =
+    useState("");
+
+  const [typeDocument, setTypeDocument] =
+    useState<DocumentType>(
+      DEFAULT_DOCUMENT_TYPE
+    );
+
+  const [dateExpiration, setDateExpiration] =
+    useState("");
+
+  const fetchDocuments =
+    useCallback(async () => {
+      try {
+        setError("");
+
+        const [
+          myDocumentsResponse,
+          clubDocumentsResponse,
+        ] = await Promise.all([
+          api.get<DocumentDTO[]>(
+            "/documents/me"
+          ),
+          api.get<DocumentDTO[]>(
+            "/documents/club"
+          ),
+        ]);
+
+        setMyDocuments(
+          Array.isArray(
+            myDocumentsResponse.data
+          )
+            ? myDocumentsResponse.data
+            : []
+        );
+
+        setClubDocuments(
+          Array.isArray(
+            clubDocumentsResponse.data
+          )
+            ? clubDocumentsResponse.data
+            : []
+        );
+      } catch (requestError: any) {
+        console.error(
+          "Erreur chargement documents :",
+          requestError
+        );
+
+        setError(
+          requestError?.response?.data?.message ||
+            requestError?.response?.data?.error ||
+            "Impossible de charger les documents pour le moment."
+        );
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    }, []);
 
   useEffect(() => {
     if (isFocused) {
       fetchDocuments();
     }
-  }, [fetchDocuments, isFocused]);
+  }, [
+    fetchDocuments,
+    isFocused,
+  ]);
 
-  const handleRefresh = useCallback(() => {
-    setRefreshing(true);
-    fetchDocuments();
-  }, [fetchDocuments]);
+  const handleRefresh =
+    useCallback(() => {
+      setRefreshing(true);
+      fetchDocuments();
+    }, [fetchDocuments]);
 
-  const filteredDocuments = useMemo(() => {
-    return [...documents]
-      .filter((document) => {
-        const status = getDocumentStatus(document);
+  const sourceDocuments =
+    selectedTab === "PERSONNELS"
+      ? myDocuments
+      : clubDocuments;
 
-        if (selectedFilter === "EN_ATTENTE") {
-          return status.variant === "waiting";
-        }
+  const filteredDocuments =
+    useMemo(() => {
+      return [...sourceDocuments]
+        .filter((document) => {
+          if (
+            selectedTab === "CLUB"
+          ) {
+            return selectedFilter ===
+              "EXPIRES"
+              ? isDocumentExpired(
+                  document
+                )
+              : true;
+          }
 
-        if (selectedFilter === "VALIDES") {
-          return status.variant === "success";
-        }
+          const status =
+            getDocumentStatus(
+              document,
+              selectedTab
+            );
 
-        if (selectedFilter === "EXPIRES") {
-          return status.label === "Expiré";
-        }
+          if (
+            selectedFilter ===
+            "EN_ATTENTE"
+          ) {
+            return (
+              status.variant ===
+              "waiting"
+            );
+          }
 
-        return true;
-      })
-      .sort(
-        (a, b) =>
-          parseDateValue(b.dateUpload) -
-          parseDateValue(a.dateUpload)
-      );
-  }, [documents, selectedFilter]);
+          if (
+            selectedFilter ===
+            "VALIDES"
+          ) {
+            return (
+              status.variant ===
+              "success"
+            );
+          }
 
-  const statistics = useMemo(() => {
-    return {
-      total: documents.length,
-      waiting: documents.filter(
-        (document) => getDocumentStatus(document).variant === "waiting"
-      ).length,
-      valid: documents.filter(
-        (document) => getDocumentStatus(document).variant === "success"
-      ).length,
-    };
-  }, [documents]);
+          if (
+            selectedFilter ===
+            "EXPIRES"
+          ) {
+            return (
+              status.label ===
+              "Expiré"
+            );
+          }
 
-  const resetUploadForm = useCallback(() => {
-    setSelectedFile(null);
-    setTitre("");
-    setTypeDocument(DOCUMENT_TYPES[0]);
-    setDateExpiration("");
-  }, []);
+          return true;
+        })
+        .sort(
+          (first, second) =>
+            parseDateValue(
+              second.dateUpload
+            ) -
+            parseDateValue(
+              first.dateUpload
+            )
+        );
+    }, [
+      selectedFilter,
+      selectedTab,
+      sourceDocuments,
+    ]);
 
-  const closeUploadModal = useCallback(() => {
-    if (uploading) return;
-
-    setUploadModalVisible(false);
-    resetUploadForm();
-  }, [resetUploadForm, uploading]);
-
-  const pickDocument = useCallback(async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: [
-          "application/pdf",
-          "application/msword",
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-          "image/jpeg",
-          "image/png",
-        ],
-        copyToCacheDirectory: true,
-        multiple: false,
-      });
-
-      if (result.canceled) return;
-
-      const asset = result.assets[0];
-
-      if (!asset) return;
-
-      const mimeType = asset.mimeType || guessMimeType(asset.name);
-
-      setSelectedFile({
-        uri: asset.uri,
-        name: asset.name || `document-${Date.now()}`,
-        mimeType,
-        size: asset.size ?? undefined,
-      });
-
-      if (!titre.trim()) {
-        setTitre(removeFileExtension(asset.name));
-      }
-    } catch (pickError) {
-      console.error("Erreur sélection document :", pickError);
-
-      Alert.alert(
-        "Sélection impossible",
-        "Impossible de sélectionner ce document."
-      );
-    }
-  }, [titre]);
-
-  const uploadDocument = useCallback(async () => {
-    if (uploading) return;
-
-    if (!selectedFile) {
-      Alert.alert(
-        "Document manquant",
-        "Sélectionnez un fichier avant de continuer."
-      );
-      return;
-    }
-
-    if (!titre.trim()) {
-      Alert.alert(
-        "Titre obligatoire",
-        "Saisissez un titre pour ce document."
-      );
-      return;
-    }
-
-    const expiration = dateExpiration.trim();
-
-    if (expiration && !isValidDateInput(expiration)) {
-      Alert.alert(
-        "Date invalide",
-        "Utilisez le format AAAA-MM-JJ, par exemple 2027-08-12."
-      );
-      return;
-    }
-
-    try {
-      setUploading(true);
-
-      const formData = new FormData();
-
-      formData.append(
-        "file",
-        {
-          uri: selectedFile.uri,
-          name: selectedFile.name,
-          type: selectedFile.mimeType,
-        } as any
-      );
-
-      formData.append("titre", titre.trim());
-      formData.append("typeDocument", typeDocument.trim());
-
-      if (expiration) {
-        formData.append("dateExpiration", expiration);
+  const visibleFilters =
+    useMemo(() => {
+      if (
+        selectedTab === "CLUB"
+      ) {
+        return FILTERS.filter(
+          (filter) =>
+            filter.id === "TOUS" ||
+            filter.id === "EXPIRES"
+        );
       }
 
-      await api.post("/documents/me", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      return FILTERS;
+    }, [selectedTab]);
+
+  const resetUploadForm =
+    useCallback(() => {
+      setSelectedFile(null);
+      setTitre("");
+      setTypeDocument(
+        DEFAULT_DOCUMENT_TYPE
+      );
+      setDateExpiration("");
+    }, []);
+
+  const closeUploadModal =
+    useCallback(() => {
+      if (uploading) return;
 
       setUploadModalVisible(false);
       resetUploadForm();
+    }, [
+      resetUploadForm,
+      uploading,
+    ]);
 
-      await fetchDocuments();
+  const pickDocument =
+    useCallback(async () => {
+      try {
+        const result =
+          await DocumentPicker.getDocumentAsync(
+            {
+              type: [
+                "application/pdf",
+                "application/msword",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "image/jpeg",
+                "image/png",
+              ],
+              copyToCacheDirectory:
+                true,
+              multiple: false,
+            }
+          );
 
-      Alert.alert(
-        "Document envoyé",
-        "Votre document a bien été transmis. Il apparaît maintenant en attente de validation."
-      );
-    } catch (requestError: any) {
-      console.error("Erreur upload document :", requestError);
+        if (result.canceled) {
+          return;
+        }
 
-      Alert.alert(
-        "Envoi impossible",
-        requestError?.response?.data?.message ||
-          requestError?.response?.data?.error ||
-          "Impossible d'envoyer le document."
-      );
-    } finally {
-      setUploading(false);
-    }
-  }, [
-    dateExpiration,
-    fetchDocuments,
-    resetUploadForm,
-    selectedFile,
-    titre,
-    typeDocument,
-    uploading,
-  ]);
+        const asset =
+          result.assets?.[0];
+
+        if (!asset) {
+          return;
+        }
+
+        setSelectedFile({
+          uri: asset.uri,
+          name:
+            asset.name ||
+            `document-${Date.now()}`,
+          mimeType:
+            asset.mimeType ||
+            guessMimeType(
+              asset.name
+            ),
+          size:
+            asset.size ??
+            undefined,
+        });
+
+        if (!titre.trim()) {
+          setTitre(
+            removeFileExtension(
+              asset.name
+            )
+          );
+        }
+      } catch (pickError) {
+        console.error(
+          "Erreur sélection document :",
+          pickError
+        );
+
+        Alert.alert(
+          "Sélection impossible",
+          "Impossible de sélectionner ce document."
+        );
+      }
+    }, [titre]);
+
+  const uploadDocument =
+    useCallback(async () => {
+      if (uploading) return;
+
+      if (!selectedFile) {
+        Alert.alert(
+          "Document manquant",
+          "Sélectionnez un fichier avant de continuer."
+        );
+        return;
+      }
+
+      if (!titre.trim()) {
+        Alert.alert(
+          "Titre obligatoire",
+          "Saisissez un titre pour ce document."
+        );
+        return;
+      }
+
+      const expiration =
+        dateExpiration.trim();
+
+      if (
+        expiration &&
+        !isValidDateInput(
+          expiration
+        )
+      ) {
+        Alert.alert(
+          "Date invalide",
+          "Utilisez le format AAAA-MM-JJ."
+        );
+        return;
+      }
+
+      try {
+        setUploading(true);
+
+        const formData =
+          new FormData();
+
+        formData.append(
+          "file",
+          {
+            uri: selectedFile.uri,
+            name: selectedFile.name,
+            type:
+              selectedFile.mimeType,
+          } as any
+        );
+
+        formData.append(
+          "titre",
+          titre.trim()
+        );
+
+        formData.append(
+          "typeDocument",
+          typeDocument
+        );
+
+        if (expiration) {
+          formData.append(
+            "dateExpiration",
+            expiration
+          );
+        }
+
+        await api.post(
+          "/documents/me",
+          formData
+        );
+
+        setUploadModalVisible(false);
+        resetUploadForm();
+
+        await fetchDocuments();
+
+        Alert.alert(
+          "Document envoyé",
+          "Votre document a bien été transmis et reste en attente de validation."
+        );
+      } catch (
+        requestError: any
+      ) {
+        Alert.alert(
+          "Envoi impossible",
+          requestError?.response?.data?.message ||
+            requestError?.response?.data?.error ||
+            "Impossible d'envoyer le document."
+        );
+      } finally {
+        setUploading(false);
+      }
+    }, [
+      dateExpiration,
+      fetchDocuments,
+      resetUploadForm,
+      selectedFile,
+      titre,
+      typeDocument,
+      uploading,
+    ]);
 
   if (loading) {
-    return <DocumentsLoading isFocused={isFocused} />;
+    return (
+      <SafeAreaView
+        style={styles.safeArea}
+        edges={["top"]}
+      >
+        <View
+          style={
+            styles.loadingContainer
+          }
+        >
+          <ActivityIndicator
+            size="large"
+            color={COLORS.blue}
+          />
+
+          <Text
+            style={styles.loadingText}
+          >
+            Chargement des documents…
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top"]}>
-      {isFocused ? <StatusBar style="light" animated /> : null}
+    <SafeAreaView
+      style={styles.safeArea}
+      edges={["top"]}
+    >
+      {isFocused ? (
+        <StatusBar
+          style="light"
+          animated
+        />
+      ) : null}
 
       <FlatList
         data={filteredDocuments}
-        keyExtractor={(item) => String(item.id)}
-        renderItem={({ item, index }) => (
+        keyExtractor={(item) =>
+          String(item.id)
+        }
+        renderItem={({
+          item,
+          index,
+        }) => (
           <Reanimated.View
-            entering={FadeInDown.duration(380).delay(index * 45)}
+            entering={FadeInDown
+              .duration(360)
+              .delay(index * 40)}
           >
-            <DocumentCard document={item} />
+            <DocumentCard
+              document={item}
+              tab={selectedTab}
+            />
           </Reanimated.View>
         )}
-        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={handleRefresh}
+            onRefresh={
+              handleRefresh
+            }
             tintColor={COLORS.red}
             colors={[COLORS.red]}
-            progressBackgroundColor={COLORS.card}
+            progressBackgroundColor={
+              COLORS.card
+            }
           />
+        }
+        showsVerticalScrollIndicator={
+          false
         }
         contentContainerStyle={[
           styles.listContent,
-          { paddingBottom: insets.bottom + 120 },
-          filteredDocuments.length === 0 && styles.emptyListContent,
+          {
+            paddingBottom:
+              insets.bottom + 120,
+          },
+          filteredDocuments.length ===
+            0 &&
+            styles.emptyListContent,
         ]}
         ListHeaderComponent={
           <View>
-            <Reanimated.View entering={FadeInUp.duration(330)}>
-              <DocumentsHeader
-                onAdd={() => setUploadModalVisible(true)}
-              />
-            </Reanimated.View>
-
             <Reanimated.View
-              entering={FadeInUp.duration(420).delay(50)}
+              entering={
+                FadeInUp.duration(
+                  320
+                )
+              }
             >
-              <View style={styles.introSection}>
-                <Text style={styles.introEyebrow}>
-                  ESPACE DOCUMENTS
+              <View
+                style={styles.header}
+              >
+                <View
+                  style={
+                    styles.headerSpacer
+                  }
+                />
+
+                <Text
+                  style={
+                    styles.headerTitle
+                  }
+                >
+                  Documents
                 </Text>
 
-                <Text style={styles.introTitle}>
-                  Mes documents
-                </Text>
-
-                <Text style={styles.introText}>
-                  Centralisez vos justificatifs et suivez leur validation par le club.
-                </Text>
+                {selectedTab ===
+                "PERSONNELS" ? (
+                  <Pressable
+                    onPress={() =>
+                      setUploadModalVisible(
+                        true
+                      )
+                    }
+                    style={
+                      styles.headerAddButton
+                    }
+                  >
+                    <Ionicons
+                      name="add"
+                      size={23}
+                      color={
+                        COLORS.text
+                      }
+                    />
+                  </Pressable>
+                ) : (
+                  <View
+                    style={
+                      styles.headerSpacer
+                    }
+                  />
+                )}
               </View>
             </Reanimated.View>
 
-            <StatisticsSection
-              total={statistics.total}
-              waiting={statistics.waiting}
-              valid={statistics.valid}
+            <View
+              style={
+                styles.introSection
+              }
+            >
+              <Text
+                style={
+                  styles.introEyebrow
+                }
+              >
+                ESPACE DOCUMENTS
+              </Text>
+
+              <Text
+                style={
+                  styles.introTitle
+                }
+              >
+                {selectedTab ===
+                "PERSONNELS"
+                  ? "Mes documents"
+                  : "Documents du club"}
+              </Text>
+
+              <Text
+                style={
+                  styles.introText
+                }
+              >
+                {selectedTab ===
+                "PERSONNELS"
+                  ? "Centralisez vos justificatifs et suivez leur validation par le club."
+                  : "Retrouvez les règlements, formulaires et ressources publiés par le club."}
+              </Text>
+            </View>
+
+            <DocumentsTabs
+              selectedTab={
+                selectedTab
+              }
+              onChange={(tab) => {
+                setSelectedTab(tab);
+                setSelectedFilter(
+                  "TOUS"
+                );
+              }}
             />
 
             <FilterSection
-              selectedFilter={selectedFilter}
-              onChange={setSelectedFilter}
+              filters={
+                visibleFilters
+              }
+              selectedFilter={
+                selectedFilter
+              }
+              onChange={
+                setSelectedFilter
+              }
             />
 
             {error ? (
               <ErrorBox
                 message={error}
-                onRetry={fetchDocuments}
+                onRetry={
+                  fetchDocuments
+                }
               />
             ) : null}
 
-            <SectionHeader
-              title="Documents disponibles"
-              count={filteredDocuments.length}
-            />
+            <View
+              style={
+                styles.sectionHeader
+              }
+            >
+              <View>
+                <Text
+                  style={
+                    styles.sectionEyebrow
+                  }
+                >
+                  {selectedTab ===
+                  "PERSONNELS"
+                    ? "MES DOCUMENTS"
+                    : "RESSOURCES DU CLUB"}
+                </Text>
+
+                <Text
+                  style={
+                    styles.sectionTitle
+                  }
+                >
+                  {selectedTab ===
+                  "PERSONNELS"
+                    ? "Documents disponibles"
+                    : "À consulter"}
+                </Text>
+              </View>
+
+              <View
+                style={
+                  styles.countPill
+                }
+              >
+                <Text
+                  style={
+                    styles.countText
+                  }
+                >
+                  {
+                    filteredDocuments.length
+                  }
+                </Text>
+              </View>
+            </View>
           </View>
         }
         ListEmptyComponent={
-          <EmptyDocuments
-            hasError={Boolean(error)}
-            selectedFilter={selectedFilter}
-            onAdd={() => setUploadModalVisible(true)}
+          <EmptyState
+            tab={selectedTab}
+            hasError={
+              Boolean(error)
+            }
+            onAdd={() =>
+              setUploadModalVisible(
+                true
+              )
+            }
           />
         }
       />
 
       <UploadDocumentModal
-        visible={uploadModalVisible}
-        selectedFile={selectedFile}
+        visible={
+          uploadModalVisible
+        }
+        selectedFile={
+          selectedFile
+        }
         titre={titre}
-        typeDocument={typeDocument}
-        dateExpiration={dateExpiration}
+        typeDocument={
+          typeDocument
+        }
+        dateExpiration={
+          dateExpiration
+        }
         uploading={uploading}
-        onClose={closeUploadModal}
-        onPickDocument={pickDocument}
-        onChangeTitre={setTitre}
-        onChangeType={setTypeDocument}
-        onChangeDateExpiration={setDateExpiration}
-        onSubmit={uploadDocument}
+        onClose={
+          closeUploadModal
+        }
+        onPickDocument={
+          pickDocument
+        }
+        onChangeTitre={
+          setTitre
+        }
+        onChangeType={
+          setTypeDocument
+        }
+        onChangeDateExpiration={
+          setDateExpiration
+        }
+        onSubmit={
+          uploadDocument
+        }
       />
     </SafeAreaView>
   );
 }
 
-function DocumentsHeader({
-  onAdd,
+function DocumentsTabs({
+  selectedTab,
+  onChange,
 }: {
-  onAdd: () => void;
+  selectedTab: DocumentsTab;
+  onChange: (
+    tab: DocumentsTab
+  ) => void;
 }) {
   return (
-    <View style={styles.header}>
-      <View style={styles.headerSpacer} />
+    <View
+      style={styles.tabsContainer}
+    >
+      <TabButton
+        active={
+          selectedTab ===
+          "PERSONNELS"
+        }
+        icon="person-outline"
+        label="Mes documents"
+        onPress={() =>
+          onChange("PERSONNELS")
+        }
+      />
 
-      <Text style={styles.headerTitle}>
-        Documents
-      </Text>
+      <TabButton
+        active={
+          selectedTab ===
+          "CLUB"
+        }
+        icon="people-outline"
+        label="Documents du club"
+        onPress={() =>
+          onChange("CLUB")
+        }
+      />
+    </View>
+  );
+}
 
-      <Pressable
-        onPress={onAdd}
-        accessibilityRole="button"
-        accessibilityLabel="Ajouter un document"
-        style={({ pressed }) => [
-          styles.headerAddButton,
-          pressed && styles.buttonPressed,
+function TabButton({
+  active,
+  icon,
+  label,
+  onPress,
+}: {
+  active: boolean;
+  icon:
+    keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.tabButton,
+        active &&
+          styles.tabButtonActive,
+      ]}
+    >
+      <Ionicons
+        name={icon}
+        size={17}
+        color={
+          active
+            ? COLORS.text
+            : COLORS.textSecondary
+        }
+      />
+
+      <Text
+        style={[
+          styles.tabButtonText,
+          active &&
+            styles.tabButtonTextActive,
         ]}
       >
-        <Ionicons name="add" size={23} color={COLORS.text} />
-      </Pressable>
-    </View>
-  );
-}
-
-function StatisticsSection({
-  total,
-  waiting,
-  valid,
-}: {
-  total: number;
-  waiting: number;
-  valid: number;
-}) {
-  return (
-    <View style={styles.statisticsContainer}>
-      <StatisticCard
-        icon="documents-outline"
-        value={total}
-        label="Total"
-      />
-
-      <StatisticCard
-        icon="time-outline"
-        value={waiting}
-        label="En attente"
-      />
-
-      <StatisticCard
-        icon="checkmark-circle-outline"
-        value={valid}
-        label="Validés"
-      />
-    </View>
-  );
-}
-
-function StatisticCard({
-  icon,
-  value,
-  label,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  value: number;
-  label: string;
-}) {
-  return (
-    <View style={styles.statisticCard}>
-      <View style={styles.statisticIcon}>
-        <Ionicons name={icon} size={17} color={COLORS.blue} />
-      </View>
-
-      <Text style={styles.statisticValue}>
-        {value}
-      </Text>
-
-      <Text style={styles.statisticLabel}>
         {label}
       </Text>
-    </View>
+    </Pressable>
   );
 }
 
 function FilterSection({
+  filters,
   selectedFilter,
   onChange,
 }: {
-  selectedFilter: DocumentFilter;
-  onChange: (filter: DocumentFilter) => void;
+  filters: Array<{
+    id: DocumentFilter;
+    label: string;
+  }>;
+  selectedFilter:
+    DocumentFilter;
+  onChange: (
+    filter: DocumentFilter
+  ) => void;
 }) {
   return (
-    <View style={styles.filterSection}>
-      <Text style={styles.filterEyebrow}>
+    <View
+      style={styles.filterSection}
+    >
+      <Text
+        style={styles.filterEyebrow}
+      >
         FILTRER
       </Text>
 
       <ScrollView
         horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filters}
+        showsHorizontalScrollIndicator={
+          false
+        }
+        contentContainerStyle={
+          styles.filters
+        }
       >
-        {DOCUMENT_FILTERS.map((filter) => {
-          const selected = selectedFilter === filter.id;
+        {filters.map(
+          (filter) => {
+            const selected =
+              filter.id ===
+              selectedFilter;
 
-          return (
-            <Pressable
-              key={filter.id}
-              onPress={() => onChange(filter.id)}
-              style={({ pressed }) => [
-                styles.filterButton,
-                selected && styles.filterButtonSelected,
-                pressed && styles.buttonPressed,
-              ]}
-            >
-              <Text
+            return (
+              <Pressable
+                key={filter.id}
+                onPress={() =>
+                  onChange(filter.id)
+                }
                 style={[
-                  styles.filterButtonText,
-                  selected && styles.filterButtonTextSelected,
+                  styles.filterButton,
+                  selected &&
+                    styles.filterButtonSelected,
                 ]}
               >
-                {filter.label}
-              </Text>
-            </Pressable>
-          );
-        })}
+                <Text
+                  style={[
+                    styles.filterButtonText,
+                    selected &&
+                      styles.filterButtonTextSelected,
+                  ]}
+                >
+                  {filter.label}
+                </Text>
+              </Pressable>
+            );
+          }
+        )}
       </ScrollView>
-    </View>
-  );
-}
-
-function SectionHeader({
-  title,
-  count,
-}: {
-  title: string;
-  count: number;
-}) {
-  return (
-    <View style={styles.sectionHeader}>
-      <View>
-        <Text style={styles.sectionEyebrow}>
-          MES DOCUMENTS
-        </Text>
-
-        <Text style={styles.sectionTitle}>
-          {title}
-        </Text>
-      </View>
-
-      <View style={styles.countPill}>
-        <Text style={styles.countText}>
-          {count}
-        </Text>
-      </View>
     </View>
   );
 }
 
 function DocumentCard({
   document,
+  tab,
 }: {
   document: DocumentDTO;
+  tab: DocumentsTab;
 }) {
-  const status = getDocumentStatus(document);
-  const presentation = getDocumentPresentation(document.type);
+  const status =
+    getDocumentStatus(
+      document,
+      tab
+    );
 
-  const handleOpen = async () => {
-    if (!document.urlFichier) {
-      Alert.alert(
-        "Document indisponible",
-        "Aucun fichier n'est associé à ce document."
-      );
-      return;
-    }
+  const presentation =
+    getDocumentPresentation(
+      document.type,
+      tab
+    );
 
-    try {
-      await Linking.openURL(document.urlFichier);
-    } catch (openError) {
-      console.error("Erreur ouverture document :", openError);
+  const openDocument =
+    async () => {
+      if (!document.urlFichier) {
+        Alert.alert(
+          "Document indisponible",
+          "Aucun fichier n'est associé à ce document."
+        );
+        return;
+      }
 
-      Alert.alert(
-        "Ouverture impossible",
-        "Impossible d'ouvrir ce document."
-      );
-    }
-  };
+      try {
+        await Linking.openURL(
+          document.urlFichier
+        );
+      } catch {
+        Alert.alert(
+          "Ouverture impossible",
+          "Impossible d'ouvrir ce document."
+        );
+      }
+    };
 
   return (
     <Pressable
-      onPress={handleOpen}
-      accessibilityRole="button"
-      accessibilityLabel={`Ouvrir ${document.titre || "le document"}`}
-      style={({ pressed }) => [
+      onPress={openDocument}
+      style={[
         styles.documentCard,
         {
-          backgroundColor: presentation.cardColor,
-          borderColor: presentation.borderColor,
+          backgroundColor:
+            presentation.cardColor,
+          borderColor:
+            presentation.borderColor,
         },
-        pressed && styles.buttonPressed,
       ]}
     >
       <View
         style={[
           styles.documentIcon,
           {
-            backgroundColor: presentation.iconBackground,
+            backgroundColor:
+              presentation.iconBackground,
           },
         ]}
       >
         <Ionicons
-          name={presentation.icon}
+          name={
+            presentation.icon
+          }
           size={23}
-          color={presentation.iconColor}
+          color={
+            presentation.iconColor
+          }
         />
       </View>
 
-      <View style={styles.documentContent}>
-        <View style={styles.documentTopRow}>
-          <View style={styles.documentTitleBlock}>
-            <Text style={styles.documentTitle} numberOfLines={2}>
-              {document.titre || "Document"}
+      <View
+        style={
+          styles.documentContent
+        }
+      >
+        <View
+          style={
+            styles.documentTopRow
+          }
+        >
+          <View
+            style={
+              styles.documentTitleBlock
+            }
+          >
+            <Text
+              style={
+                styles.documentTitle
+              }
+              numberOfLines={2}
+            >
+              {document.titre ||
+                "Document"}
             </Text>
 
-            <Text style={styles.documentType}>
-              {document.type || "Document"}
+            <Text
+              style={
+                styles.documentType
+              }
+            >
+              {document.type ||
+                "Document"}
             </Text>
           </View>
 
-          <StatusBadge status={status} />
+          <StatusBadge
+            status={status}
+          />
         </View>
 
-        <View style={styles.documentMetadata}>
-          <MetadataItem
-            icon="cloud-upload-outline"
-            label="Ajouté"
-            value={formatDate(document.dateUpload)}
-          />
-
+        <View
+          style={
+            styles.documentMetadata
+          }
+        >
           <MetadataItem
             icon="calendar-outline"
-            label="Expiration"
-            value={
-              document.dateExpiration
-                ? formatDate(document.dateExpiration)
-                : "Aucune"
-            }
+            label="Publié"
+            value={formatDate(
+              document.dateUpload
+            )}
           />
+
+          {document.dateExpiration ? (
+            <MetadataItem
+              icon="time-outline"
+              label="Expiration"
+              value={formatDate(
+                document.dateExpiration
+              )}
+            />
+          ) : null}
 
           {document.activiteTitre ? (
             <MetadataItem
               icon="fitness-outline"
               label="Activité"
-              value={document.activiteTitre}
+              value={
+                document.activiteTitre
+              }
             />
           ) : null}
         </View>
 
-        <View style={styles.documentFooter}>
-          <Text style={styles.openDocumentText}>
+        <View
+          style={
+            styles.documentFooter
+          }
+        >
+          <Text
+            style={
+              styles.openDocumentText
+            }
+          >
             Ouvrir le document
           </Text>
 
           <Ionicons
             name="open-outline"
             size={16}
-            color={COLORS.textSecondary}
+            color={
+              COLORS.textSecondary
+            }
           />
         </View>
       </View>
@@ -716,19 +1164,28 @@ function StatusBadge({
     <View
       style={[
         styles.statusBadge,
-        getStatusBadgeStyle(status.variant),
+        getStatusBadgeStyle(
+          status.variant
+        ),
       ]}
     >
       <Ionicons
         name={status.icon}
         size={12}
-        color={getStatusColor(status.variant)}
+        color={getStatusColor(
+          status.variant
+        )}
       />
 
       <Text
         style={[
           styles.statusBadgeText,
-          { color: getStatusColor(status.variant) },
+          {
+            color:
+              getStatusColor(
+                status.variant
+              ),
+          },
         ]}
       >
         {status.label}
@@ -742,29 +1199,130 @@ function MetadataItem({
   label,
   value,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon:
+    keyof typeof Ionicons.glyphMap;
   label: string;
   value: string;
 }) {
   return (
-    <View style={styles.metadataItem}>
-      <View style={styles.metadataIcon}>
-        <Ionicons
-          name={icon}
-          size={15}
-          color={COLORS.textSecondary}
-        />
-      </View>
+    <View
+      style={styles.metadataItem}
+    >
+      <Ionicons
+        name={icon}
+        size={15}
+        color={
+          COLORS.textSecondary
+        }
+      />
 
-      <View style={styles.metadataText}>
-        <Text style={styles.metadataLabel}>
+      <View
+        style={
+          styles.metadataText
+        }
+      >
+        <Text
+          style={
+            styles.metadataLabel
+          }
+        >
           {label}
         </Text>
 
-        <Text style={styles.metadataValue} numberOfLines={1}>
+        <Text
+          style={
+            styles.metadataValue
+          }
+          numberOfLines={1}
+        >
           {value}
         </Text>
       </View>
+    </View>
+  );
+}
+
+function EmptyState({
+  tab,
+  hasError,
+  onAdd,
+}: {
+  tab: DocumentsTab;
+  hasError: boolean;
+  onAdd: () => void;
+}) {
+  return (
+    <View
+      style={styles.emptyContainer}
+    >
+      <LinearGradient
+        colors={[
+          "rgba(96,165,250,0.18)",
+          "rgba(96,165,250,0.05)",
+        ]}
+        style={
+          styles.emptyIconContainer
+        }
+      >
+        <Ionicons
+          name={
+            hasError
+              ? "cloud-offline-outline"
+              : tab ===
+                  "PERSONNELS"
+                ? "document-text-outline"
+                : "library-outline"
+          }
+          size={34}
+          color={COLORS.blue}
+        />
+      </LinearGradient>
+
+      <Text
+        style={styles.emptyTitle}
+      >
+        {hasError
+          ? "Chargement impossible"
+          : tab === "PERSONNELS"
+            ? "Aucun document"
+            : "Aucun document du club"}
+      </Text>
+
+      <Text
+        style={
+          styles.emptyDescription
+        }
+      >
+        {hasError
+          ? "Réessayez dans quelques instants."
+          : tab === "PERSONNELS"
+            ? "Ajoutez votre premier justificatif."
+            : "Les ressources publiées par le club apparaîtront ici."}
+      </Text>
+
+      {!hasError &&
+      tab === "PERSONNELS" ? (
+        <Pressable
+          onPress={onAdd}
+          style={
+            styles.emptyAction
+          }
+        >
+          <Ionicons
+            name="add"
+            size={17}
+            color={COLORS.text}
+          />
+
+          <Text
+            style={
+              styles.emptyActionText
+            }
+          >
+            Ajouter un document
+          </Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -784,83 +1342,24 @@ function ErrorBox({
         color={COLORS.red}
       />
 
-      <Text style={styles.errorText}>
+      <Text
+        style={styles.errorText}
+      >
         {message}
       </Text>
 
       <Pressable
         onPress={onRetry}
-        style={({ pressed }) => [
-          styles.retryButton,
-          pressed && styles.buttonPressed,
-        ]}
-      >
-        <Ionicons name="refresh" size={17} color={COLORS.text} />
-      </Pressable>
-    </View>
-  );
-}
-
-function EmptyDocuments({
-  hasError,
-  selectedFilter,
-  onAdd,
-}: {
-  hasError: boolean;
-  selectedFilter: DocumentFilter;
-  onAdd: () => void;
-}) {
-  const title = hasError
-    ? "Chargement impossible"
-    : selectedFilter === "TOUS"
-      ? "Aucun document"
-      : "Aucun résultat";
-
-  const description = hasError
-    ? "Actualisez la page ou réessayez dans quelques instants."
-    : selectedFilter === "TOUS"
-      ? "Ajoutez votre premier justificatif pour le retrouver ici."
-      : "Aucun document ne correspond au filtre sélectionné.";
-
-  return (
-    <View style={styles.emptyContainer}>
-      <LinearGradient
-        colors={[
-          "rgba(96,165,250,0.18)",
-          "rgba(96,165,250,0.05)",
-        ]}
-        style={styles.emptyIconContainer}
+        style={
+          styles.retryButton
+        }
       >
         <Ionicons
-          name={hasError ? "cloud-offline-outline" : "documents-outline"}
-          size={34}
-          color={COLORS.blue}
+          name="refresh"
+          size={17}
+          color={COLORS.text}
         />
-      </LinearGradient>
-
-      <Text style={styles.emptyTitle}>
-        {title}
-      </Text>
-
-      <Text style={styles.emptyDescription}>
-        {description}
-      </Text>
-
-      {!hasError && selectedFilter === "TOUS" ? (
-        <Pressable
-          onPress={onAdd}
-          style={({ pressed }) => [
-            styles.emptyAction,
-            pressed && styles.buttonPressed,
-          ]}
-        >
-          <Ionicons name="add" size={17} color={COLORS.text} />
-
-          <Text style={styles.emptyActionText}>
-            Ajouter un document
-          </Text>
-        </Pressable>
-      ) : null}
+      </Pressable>
     </View>
   );
 }
@@ -880,16 +1379,23 @@ function UploadDocumentModal({
   onSubmit,
 }: {
   visible: boolean;
-  selectedFile: SelectedDocument | null;
+  selectedFile:
+    SelectedDocument | null;
   titre: string;
-  typeDocument: string;
+  typeDocument: DocumentType;
   dateExpiration: string;
   uploading: boolean;
   onClose: () => void;
   onPickDocument: () => void;
-  onChangeTitre: (value: string) => void;
-  onChangeType: (value: string) => void;
-  onChangeDateExpiration: (value: string) => void;
+  onChangeTitre: (
+    value: string
+  ) => void;
+  onChangeType: (
+    value: DocumentType
+  ) => void;
+  onChangeDateExpiration: (
+    value: string
+  ) => void;
   onSubmit: () => void;
 }) {
   return (
@@ -897,170 +1403,207 @@ function UploadDocumentModal({
       visible={visible}
       transparent
       animationType="fade"
-      onRequestClose={onClose}
+      onRequestClose={
+        onClose
+      }
     >
-      <View style={styles.modalBackdrop}>
+      <View
+        style={
+          styles.modalBackdrop
+        }
+      >
         <Pressable
-          style={StyleSheet.absoluteFillObject}
+          style={
+            StyleSheet.absoluteFillObject
+          }
           onPress={onClose}
         />
 
-        <View style={styles.uploadModal}>
-          <View style={styles.modalHandle} />
+        <View
+          style={
+            styles.uploadModal
+          }
+        >
+          <View
+            style={
+              styles.modalHandle
+            }
+          />
 
-          <View style={styles.modalHeader}>
-            <View>
-              <Text style={styles.modalEyebrow}>
-                MES DOCUMENTS
-              </Text>
-
-              <Text style={styles.modalTitle}>
-                Ajouter un document
-              </Text>
-            </View>
+          <View
+            style={
+              styles.modalHeader
+            }
+          >
+            <Text
+              style={
+                styles.modalTitle
+              }
+            >
+              Ajouter un document
+            </Text>
 
             <Pressable
               onPress={onClose}
               disabled={uploading}
-              style={styles.modalCloseButton}
+              style={
+                styles.modalCloseButton
+              }
             >
-              <Ionicons name="close" size={21} color={COLORS.text} />
+              <Ionicons
+                name="close"
+                size={21}
+                color={COLORS.text}
+              />
             </Pressable>
           </View>
 
           <ScrollView
-            showsVerticalScrollIndicator={false}
+            showsVerticalScrollIndicator={
+              false
+            }
             keyboardShouldPersistTaps="handled"
           >
-            <Text style={styles.inputLabel}>
+            <Text
+              style={styles.inputLabel}
+            >
               FICHIER
             </Text>
 
             <Pressable
-              onPress={onPickDocument}
+              onPress={
+                onPickDocument
+              }
               disabled={uploading}
-              style={({ pressed }) => [
-                styles.filePicker,
-                selectedFile && styles.filePickerSelected,
-                pressed && !uploading && styles.buttonPressed,
-              ]}
+              style={
+                styles.filePicker
+              }
             >
-              <View style={styles.filePickerIcon}>
-                <Ionicons
-                  name={
-                    selectedFile
-                      ? "document-attach-outline"
-                      : "cloud-upload-outline"
-                  }
-                  size={24}
-                  color={COLORS.blue}
-                />
-              </View>
+              <Ionicons
+                name="cloud-upload-outline"
+                size={24}
+                color={COLORS.blue}
+              />
 
-              <View style={styles.filePickerContent}>
-                <Text style={styles.filePickerTitle} numberOfLines={1}>
+              <View
+                style={
+                  styles.filePickerContent
+                }
+              >
+                <Text
+                  style={
+                    styles.filePickerTitle
+                  }
+                  numberOfLines={1}
+                >
                   {selectedFile
                     ? selectedFile.name
                     : "Sélectionner un fichier"}
                 </Text>
 
-                <Text style={styles.filePickerText}>
+                <Text
+                  style={
+                    styles.filePickerText
+                  }
+                >
                   {selectedFile
-                    ? formatFileSize(selectedFile.size)
+                    ? formatFileSize(
+                        selectedFile.size
+                      )
                     : "PDF, DOC, DOCX, JPG ou PNG • 10 Mo max"}
                 </Text>
               </View>
-
-              <Ionicons
-                name="chevron-forward"
-                size={18}
-                color={COLORS.textMuted}
-              />
             </Pressable>
 
-            <Text style={styles.inputLabel}>
+            <Text
+              style={styles.inputLabel}
+            >
               TITRE
             </Text>
 
             <TextInput
               value={titre}
-              onChangeText={onChangeTitre}
-              editable={!uploading}
+              onChangeText={
+                onChangeTitre
+              }
+              style={styles.input}
               placeholder="Ex. Certificat médical 2026"
               placeholderTextColor="#666666"
-              style={styles.input}
             />
 
-            <Text style={styles.inputLabel}>
-              TYPE DE DOCUMENT
+            <Text
+              style={styles.inputLabel}
+            >
+              TYPE
             </Text>
 
-            <View style={styles.typeSelector}>
-              {DOCUMENT_TYPES.map((type) => {
-                const selected = typeDocument === type;
-
-                return (
+            <View
+              style={
+                styles.typeSelector
+              }
+            >
+              {DOCUMENT_TYPES.map(
+                (type) => (
                   <Pressable
                     key={type}
-                    onPress={() => onChangeType(type)}
-                    disabled={uploading}
-                    style={({ pressed }) => [
+                    onPress={() =>
+                      onChangeType(type)
+                    }
+                    style={[
                       styles.typeButton,
-                      selected && styles.typeButtonSelected,
-                      pressed && !uploading && styles.buttonPressed,
+                      typeDocument ===
+                        type &&
+                        styles.typeButtonSelected,
                     ]}
                   >
                     <Text
                       style={[
                         styles.typeButtonText,
-                        selected && styles.typeButtonTextSelected,
+                        typeDocument ===
+                          type &&
+                          styles.typeButtonTextSelected,
                       ]}
                     >
                       {type}
                     </Text>
                   </Pressable>
-                );
-              })}
+                )
+              )}
             </View>
 
-            <Text style={styles.inputLabel}>
+            <Text
+              style={styles.inputLabel}
+            >
               DATE D’EXPIRATION
-              <Text style={styles.optionalLabel}>
+              <Text
+                style={
+                  styles.optionalLabel
+                }
+              >
                 {" "}
                 (optionnelle)
               </Text>
             </Text>
 
             <TextInput
-              value={dateExpiration}
-              onChangeText={onChangeDateExpiration}
-              editable={!uploading}
+              value={
+                dateExpiration
+              }
+              onChangeText={
+                onChangeDateExpiration
+              }
+              style={styles.input}
               placeholder="AAAA-MM-JJ"
               placeholderTextColor="#666666"
-              autoCapitalize="none"
-              keyboardType="numbers-and-punctuation"
-              style={styles.input}
             />
-
-            <View style={styles.validationInfo}>
-              <Ionicons
-                name="shield-checkmark-outline"
-                size={19}
-                color={COLORS.amber}
-              />
-
-              <Text style={styles.validationInfoText}>
-                Après l’envoi, le document restera en attente jusqu’à sa validation par l’administration.
-              </Text>
-            </View>
 
             <Pressable
               onPress={onSubmit}
               disabled={uploading}
-              style={({ pressed }) => [
+              style={[
                 styles.submitButton,
-                uploading && styles.submitButtonDisabled,
-                pressed && !uploading && styles.buttonPressed,
+                uploading &&
+                  styles.submitButtonDisabled,
               ]}
             >
               {uploading ? (
@@ -1076,7 +1619,11 @@ function UploadDocumentModal({
                     color={COLORS.text}
                   />
 
-                  <Text style={styles.submitButtonText}>
+                  <Text
+                    style={
+                      styles.submitButtonText
+                    }
+                  >
                     Envoyer le document
                   </Text>
                 </>
@@ -1089,80 +1636,88 @@ function UploadDocumentModal({
   );
 }
 
-function DocumentsLoading({
-  isFocused,
-}: {
-  isFocused: boolean;
-}) {
-  return (
-    <SafeAreaView style={styles.safeArea} edges={["top"]}>
-      {isFocused ? <StatusBar style="light" animated /> : null}
-
-      <View style={styles.loadingContainer}>
-        <LinearGradient
-          colors={[COLORS.blue, "#1D4F7A"]}
-          style={styles.loadingLogo}
-        >
-          <Ionicons
-            name="documents-outline"
-            size={28}
-            color={COLORS.text}
-          />
-        </LinearGradient>
-
-        <ActivityIndicator size="small" color={COLORS.text} />
-
-        <Text style={styles.loadingText}>
-          Chargement de vos documents…
-        </Text>
-      </View>
-    </SafeAreaView>
-  );
-}
-
-function parseDateValue(value?: string | null): number {
+function parseDateValue(
+  value?: string | null
+): number {
   if (!value) return 0;
 
-  const parsed = new Date(`${value}T12:00:00`).getTime();
+  const parsed =
+    new Date(
+      `${value}T12:00:00`
+    ).getTime();
 
-  return Number.isNaN(parsed) ? 0 : parsed;
+  return Number.isNaN(parsed)
+    ? 0
+    : parsed;
 }
 
-function formatDate(value?: string | null): string {
-  if (!value) return "Non renseigné";
+function formatDate(
+  value?: string | null
+): string {
+  if (!value) {
+    return "Non renseigné";
+  }
 
-  const date = new Date(`${value}T12:00:00`);
+  const date =
+    new Date(
+      `${value}T12:00:00`
+    );
 
-  if (Number.isNaN(date.getTime())) {
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
     return value;
   }
 
-  return new Intl.DateTimeFormat("fr-FR", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(date);
+  return new Intl.DateTimeFormat(
+    "fr-FR",
+    {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }
+  ).format(date);
 }
 
-function isDocumentExpired(document: DocumentDTO): boolean {
+function isDocumentExpired(
+  document: DocumentDTO
+): boolean {
   if (!document.dateExpiration) {
     return false;
   }
 
-  const expiration = parseDateValue(document.dateExpiration);
+  const expiration =
+    parseDateValue(
+      document.dateExpiration
+    );
 
   if (!expiration) {
     return false;
   }
 
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  today.setHours(
+    0,
+    0,
+    0,
+    0
+  );
 
-  return expiration < today.getTime();
+  return (
+    expiration <
+    today.getTime()
+  );
 }
 
-function getDocumentStatus(document: DocumentDTO): StatusInfo {
-  if (isDocumentExpired(document)) {
+function getDocumentStatus(
+  document: DocumentDTO,
+  tab: DocumentsTab
+): StatusInfo {
+  if (
+    isDocumentExpired(document)
+  ) {
     return {
       label: "Expiré",
       variant: "danger",
@@ -1170,7 +1725,17 @@ function getDocumentStatus(document: DocumentDTO): StatusInfo {
     };
   }
 
-  if (document.estValide === true) {
+  if (tab === "CLUB") {
+    return {
+      label: "Disponible",
+      variant: "success",
+      icon: "checkmark-circle-outline",
+    };
+  }
+
+  if (
+    document.estValide === true
+  ) {
     return {
       label: "Validé",
       variant: "success",
@@ -1185,776 +1750,784 @@ function getDocumentStatus(document: DocumentDTO): StatusInfo {
   };
 }
 
-function getStatusColor(variant: DocumentStatusVariant): string {
-  if (variant === "success") return COLORS.green;
-  if (variant === "danger") return COLORS.danger;
-  if (variant === "waiting") return COLORS.amber;
+function getStatusColor(
+  variant: StatusVariant
+): string {
+  if (variant === "success") {
+    return COLORS.green;
+  }
+
+  if (variant === "danger") {
+    return COLORS.danger;
+  }
+
+  if (variant === "waiting") {
+    return COLORS.amber;
+  }
 
   return COLORS.textSecondary;
 }
 
-function getStatusBadgeStyle(variant: DocumentStatusVariant) {
-  if (variant === "success") return styles.statusBadgeSuccess;
-  if (variant === "danger") return styles.statusBadgeDanger;
-  if (variant === "waiting") return styles.statusBadgeWaiting;
+function getStatusBadgeStyle(
+  variant: StatusVariant
+) {
+  if (variant === "success") {
+    return styles.statusBadgeSuccess;
+  }
+
+  if (variant === "danger") {
+    return styles.statusBadgeDanger;
+  }
+
+  if (variant === "waiting") {
+    return styles.statusBadgeWaiting;
+  }
 
   return styles.statusBadgeNeutral;
 }
 
-function getDocumentPresentation(type?: string | null) {
-  const normalized = String(type || "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-
-  if (normalized.includes("certificat")) {
+function getDocumentPresentation(
+  type?: string | null,
+  tab?: DocumentsTab
+) {
+  if (tab === "CLUB") {
     return {
-      icon: "medical-outline" as const,
-      iconColor: "#60A5FA",
-      iconBackground: "rgba(96,165,250,0.13)",
-      cardColor: "#172733",
-      borderColor: "rgba(96,165,250,0.16)",
+      icon:
+        "library-outline" as const,
+      iconColor: "#FBBF24",
+      iconBackground:
+        "rgba(251,191,36,0.12)",
+      cardColor: "#29231A",
+      borderColor:
+        "rgba(251,191,36,0.15)",
     };
   }
 
-  if (normalized.includes("licence")) {
+  const normalized =
+    String(type || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(
+        /[\u0300-\u036f]/g,
+        ""
+      );
+
+  if (
+    normalized.includes(
+      "certificat"
+    )
+  ) {
     return {
-      icon: "ribbon-outline" as const,
-      iconColor: "#A78BFA",
-      iconBackground: "rgba(167,139,250,0.13)",
-      cardColor: "#211D2D",
-      borderColor: "rgba(167,139,250,0.16)",
+      icon:
+        "medkit-outline" as const,
+      iconColor: COLORS.blue,
+      iconBackground:
+        "rgba(96,165,250,0.13)",
+      cardColor: "#172733",
+      borderColor:
+        "rgba(96,165,250,0.16)",
     };
   }
 
   if (
-    normalized.includes("passeport") ||
-    normalized.includes("identite")
+    normalized.includes(
+      "licence"
+    )
   ) {
     return {
-      icon: "id-card-outline" as const,
-      iconColor: "#34D399",
-      iconBackground: "rgba(52,211,153,0.12)",
-      cardColor: "#172821",
-      borderColor: "rgba(52,211,153,0.15)",
-    };
-  }
-
-  if (normalized.includes("autorisation")) {
-    return {
-      icon: "shield-checkmark-outline" as const,
-      iconColor: "#FBBF24",
-      iconBackground: "rgba(251,191,36,0.12)",
-      cardColor: "#2A2417",
-      borderColor: "rgba(251,191,36,0.14)",
-    };
-  }
-
-  if (normalized.includes("diplome")) {
-    return {
-      icon: "school-outline" as const,
-      iconColor: "#FB7185",
-      iconBackground: "rgba(251,113,133,0.12)",
-      cardColor: "#2C1C22",
-      borderColor: "rgba(251,113,133,0.15)",
+      icon:
+        "ribbon-outline" as const,
+      iconColor: "#A78BFA",
+      iconBackground:
+        "rgba(167,139,250,0.13)",
+      cardColor: "#211D2D",
+      borderColor:
+        "rgba(167,139,250,0.16)",
     };
   }
 
   return {
-    icon: "document-text-outline" as const,
-    iconColor: COLORS.textSecondary,
-    iconBackground: "rgba(255,255,255,0.06)",
+    icon:
+      "document-text-outline" as const,
+    iconColor:
+      COLORS.textSecondary,
+    iconBackground:
+      "rgba(255,255,255,0.06)",
     cardColor: COLORS.card,
     borderColor: COLORS.border,
   };
 }
 
-function isValidDateInput(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+function isValidDateInput(
+  value: string
+): boolean {
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(
+      value
+    )
+  ) {
     return false;
   }
 
-  const date = new Date(`${value}T12:00:00`);
+  const date =
+    new Date(
+      `${value}T12:00:00`
+    );
 
-  return !Number.isNaN(date.getTime());
+  return !Number.isNaN(
+    date.getTime()
+  );
 }
 
-function guessMimeType(fileName?: string): string {
-  const value = String(fileName || "").toLowerCase();
+function guessMimeType(
+  fileName?: string
+): string {
+  const value =
+    String(fileName || "")
+      .toLowerCase();
 
-  if (value.endsWith(".pdf")) return "application/pdf";
-  if (value.endsWith(".doc")) return "application/msword";
-  if (value.endsWith(".docx")) {
+  if (
+    value.endsWith(".pdf")
+  ) {
+    return "application/pdf";
+  }
+
+  if (
+    value.endsWith(".doc")
+  ) {
+    return "application/msword";
+  }
+
+  if (
+    value.endsWith(".docx")
+  ) {
     return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
   }
-  if (value.endsWith(".png")) return "image/png";
-  if (value.endsWith(".jpg") || value.endsWith(".jpeg")) {
+
+  if (
+    value.endsWith(".png")
+  ) {
+    return "image/png";
+  }
+
+  if (
+    value.endsWith(".jpg") ||
+    value.endsWith(".jpeg")
+  ) {
     return "image/jpeg";
   }
 
   return "application/octet-stream";
 }
 
-function removeFileExtension(fileName?: string): string {
+function removeFileExtension(
+  fileName?: string
+): string {
   return String(fileName || "")
-    .replace(/\.[^/.]+$/, "")
+    .replace(
+      /\.[^/.]+$/,
+      ""
+    )
     .trim();
 }
 
-function formatFileSize(size?: number): string {
-  if (!size || size <= 0) {
+function formatFileSize(
+  size?: number
+): string {
+  if (
+    !size ||
+    size <= 0
+  ) {
     return "Fichier sélectionné";
   }
 
-  if (size < 1024 * 1024) {
-    return `${Math.round(size / 1024)} Ko`;
+  if (
+    size < 1024 * 1024
+  ) {
+    return `${Math.round(
+      size / 1024
+    )} Ko`;
   }
 
-  return `${(size / (1024 * 1024)).toFixed(1)} Mo`;
+  return `${(
+    size /
+    (1024 * 1024)
+  ).toFixed(1)} Mo`;
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-
-  listContent: {
-    paddingTop: 14,
-    paddingHorizontal: 16,
-  },
-
-  emptyListContent: {
-    flexGrow: 1,
-  },
-
-  header: {
-    minHeight: 50,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 14,
-  },
-
-  headerTitle: {
-    color: COLORS.text,
-    fontSize: 17,
-    letterSpacing: -0.25,
-    fontFamily: "Inter_700Bold",
-  },
-
-  headerSpacer: {
-    width: 46,
-    height: 46,
-  },
-
-  headerAddButton: {
-    width: 46,
-    height: 46,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: COLORS.burgundy,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    borderRadius: 16,
-  },
-
-  introSection: {
-    marginTop: 2,
-    marginBottom: 18,
-    paddingHorizontal: 2,
-  },
-
-  introEyebrow: {
-    color: COLORS.blue,
-    fontSize: 10,
-    letterSpacing: 1.5,
-    fontFamily: "Inter_700Bold",
-  },
-
-  introTitle: {
-    marginTop: 6,
-    color: COLORS.text,
-    fontSize: 24,
-    lineHeight: 30,
-    letterSpacing: -0.5,
-    fontFamily: "Inter_700Bold",
-  },
-
-  introText: {
-    maxWidth: 330,
-    marginTop: 7,
-    color: COLORS.textSecondary,
-    fontSize: 12,
-    lineHeight: 18,
-    fontFamily: "Inter_400Regular",
-  },
-
-  statisticsContainer: {
-    flexDirection: "row",
-    gap: 8,
-  },
-
-  statisticCard: {
-    flex: 1,
-    minHeight: 108,
-    padding: 13,
-    backgroundColor: COLORS.blueCard,
-    borderWidth: 1,
-    borderColor: "rgba(96,165,250,0.13)",
-    borderRadius: 20,
-  },
-
-  statisticIcon: {
-    width: 32,
-    height: 32,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(96,165,250,0.11)",
-    borderRadius: 11,
-  },
-
-  statisticValue: {
-    marginTop: 12,
-    color: COLORS.text,
-    fontSize: 23,
-    fontFamily: "Inter_700Bold",
-  },
-
-  statisticLabel: {
-    marginTop: 3,
-    color: "#9FB2C2",
-    fontSize: 9,
-    fontFamily: "Inter_600SemiBold",
-  },
-
-  filterSection: {
-    marginTop: 24,
-  },
-
-  filterEyebrow: {
-    marginBottom: 11,
-    color: COLORS.textMuted,
-    fontSize: 10,
-    letterSpacing: 1.4,
-    fontFamily: "Inter_700Bold",
-  },
-
-  filters: {
-    gap: 8,
-    paddingRight: 18,
-  },
-
-  filterButton: {
-    minHeight: 40,
-    justifyContent: "center",
-    paddingHorizontal: 14,
-    backgroundColor: COLORS.card,
-    borderWidth: 1,
-    borderColor: COLORS.borderSoft,
-    borderRadius: 14,
-  },
-
-  filterButtonSelected: {
-    backgroundColor: COLORS.burgundy,
-    borderColor: COLORS.burgundy,
-  },
-
-  filterButtonText: {
-    color: COLORS.textSecondary,
-    fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
-  },
-
-  filterButtonTextSelected: {
-    color: COLORS.text,
-  },
-
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 27,
-    marginBottom: 14,
-  },
-
-  sectionEyebrow: {
-    color: COLORS.textMuted,
-    fontSize: 10,
-    letterSpacing: 1.4,
-    fontFamily: "Inter_700Bold",
-  },
-
-  sectionTitle: {
-    marginTop: 5,
-    color: COLORS.text,
-    fontSize: 20,
-    fontFamily: "Inter_700Bold",
-  },
-
-  countPill: {
-    minWidth: 35,
-    minHeight: 35,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: COLORS.card,
-    borderWidth: 1,
-    borderColor: COLORS.borderSoft,
-    borderRadius: 18,
-  },
-
-  countText: {
-    color: COLORS.text,
-    fontSize: 12,
-    fontFamily: "Inter_700Bold",
-  },
-
-  documentCard: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 12,
-    padding: 15,
-    borderWidth: 1,
-    borderRadius: 22,
-  },
-
-  documentIcon: {
-    width: 48,
-    height: 48,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 16,
-  },
-
-  documentContent: {
-    flex: 1,
-    marginLeft: 13,
-  },
-
-  documentTopRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-
-  documentTitleBlock: {
-    flex: 1,
-    paddingRight: 8,
-  },
-
-  documentTitle: {
-    color: COLORS.text,
-    fontSize: 15,
-    lineHeight: 20,
-    fontFamily: "Inter_700Bold",
-  },
-
-  documentType: {
-    marginTop: 4,
-    color: COLORS.textSecondary,
-    fontSize: 10,
-    fontFamily: "Inter_400Regular",
-  },
-
-  documentMetadata: {
-    marginTop: 15,
-    gap: 9,
-  },
-
-  metadataItem: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  metadataIcon: {
-    width: 31,
-    height: 31,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 10,
-  },
-
-  metadataText: {
-    flex: 1,
-    marginLeft: 9,
-  },
-
-  metadataLabel: {
-    color: COLORS.textMuted,
-    fontSize: 8,
-    textTransform: "uppercase",
-    letterSpacing: 0.55,
-    fontFamily: "Inter_700Bold",
-  },
-
-  metadataValue: {
-    marginTop: 2,
-    color: COLORS.text,
-    fontSize: 10,
-    fontFamily: "Inter_600SemiBold",
-  },
-
-  documentFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 14,
-    paddingTop: 11,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.06)",
-  },
-
-  openDocumentText: {
-    color: COLORS.textSecondary,
-    fontSize: 10,
-    fontFamily: "Inter_600SemiBold",
-  },
-
-  statusBadge: {
-    minHeight: 29,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 9,
-    borderWidth: 1,
-    borderRadius: 999,
-  },
-
-  statusBadgeWaiting: {
-    backgroundColor: "rgba(251,191,36,0.09)",
-    borderColor: "rgba(251,191,36,0.20)",
-  },
-
-  statusBadgeSuccess: {
-    backgroundColor: "rgba(52,211,153,0.09)",
-    borderColor: "rgba(52,211,153,0.20)",
-  },
-
-  statusBadgeDanger: {
-    backgroundColor: "rgba(248,113,113,0.09)",
-    borderColor: "rgba(248,113,113,0.20)",
-  },
-
-  statusBadgeNeutral: {
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderColor: "rgba(255,255,255,0.08)",
-  },
-
-  statusBadgeText: {
-    fontSize: 8,
-    textTransform: "uppercase",
-    letterSpacing: 0.35,
-    fontFamily: "Inter_700Bold",
-  },
-
-  errorBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 16,
-    padding: 13,
-    backgroundColor: "#281719",
-    borderWidth: 1,
-    borderColor: "rgba(229,9,20,0.22)",
-    borderRadius: 17,
-  },
-
-  errorText: {
-    flex: 1,
-    marginHorizontal: 10,
-    color: "#F5A0A5",
-    fontSize: 11,
-    lineHeight: 16,
-    fontFamily: "Inter_400Regular",
-  },
-
-  retryButton: {
-    width: 34,
-    height: 34,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: COLORS.red,
-    borderRadius: 11,
-  },
-
-  emptyContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 56,
-    paddingHorizontal: 30,
-  },
-
-  emptyIconContainer: {
-    width: 72,
-    height: 72,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 24,
-  },
-
-  emptyTitle: {
-    marginTop: 17,
-    color: COLORS.text,
-    fontSize: 17,
-    textAlign: "center",
-    fontFamily: "Inter_700Bold",
-  },
-
-  emptyDescription: {
-    maxWidth: 290,
-    marginTop: 8,
-    color: COLORS.textSecondary,
-    fontSize: 12,
-    lineHeight: 19,
-    textAlign: "center",
-    fontFamily: "Inter_400Regular",
-  },
-
-  emptyAction: {
-    minHeight: 45,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 7,
-    marginTop: 18,
-    paddingHorizontal: 15,
-    backgroundColor: COLORS.burgundy,
-    borderRadius: 14,
-  },
-
-  emptyActionText: {
-    color: COLORS.text,
-    fontSize: 11,
-    fontFamily: "Inter_700Bold",
-  },
-
-  modalBackdrop: {
-    flex: 1,
-    justifyContent: "flex-end",
-    backgroundColor: "rgba(0,0,0,0.74)",
-  },
-
-  uploadModal: {
-    width: "100%",
-    maxHeight: "92%",
-    paddingHorizontal: 18,
-    paddingTop: 10,
-    paddingBottom: 28,
-    backgroundColor: COLORS.backgroundElevated,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-
-  modalHandle: {
-    alignSelf: "center",
-    width: 42,
-    height: 4,
-    marginBottom: 15,
-    backgroundColor: "#555555",
-    borderRadius: 999,
-  },
-
-  modalHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    marginBottom: 20,
-  },
-
-  modalEyebrow: {
-    color: COLORS.blue,
-    fontSize: 9,
-    letterSpacing: 1.4,
-    fontFamily: "Inter_700Bold",
-  },
-
-  modalTitle: {
-    marginTop: 4,
-    color: COLORS.text,
-    fontSize: 24,
-    letterSpacing: -0.5,
-    fontFamily: "Inter_700Bold",
-  },
-
-  modalCloseButton: {
-    width: 42,
-    height: 42,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: COLORS.cardSoft,
-    borderRadius: 15,
-  },
-
-  inputLabel: {
-    marginTop: 16,
-    marginBottom: 8,
-    color: COLORS.textMuted,
-    fontSize: 9,
-    letterSpacing: 1.15,
-    fontFamily: "Inter_700Bold",
-  },
-
-  optionalLabel: {
-    color: "#666666",
-    textTransform: "none",
-    letterSpacing: 0,
-    fontFamily: "Inter_400Regular",
-  },
-
-  input: {
-    minHeight: 50,
-    paddingHorizontal: 14,
-    color: COLORS.text,
-    backgroundColor: COLORS.card,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 15,
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-  },
-
-  filePicker: {
-    minHeight: 76,
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    backgroundColor: COLORS.card,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 18,
-  },
-
-  filePickerSelected: {
-    backgroundColor: COLORS.blueCard,
-    borderColor: "rgba(96,165,250,0.25)",
-  },
-
-  filePickerIcon: {
-    width: 46,
-    height: 46,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(96,165,250,0.11)",
-    borderRadius: 15,
-  },
-
-  filePickerContent: {
-    flex: 1,
-    marginHorizontal: 12,
-  },
-
-  filePickerTitle: {
-    color: COLORS.text,
-    fontSize: 12,
-    fontFamily: "Inter_700Bold",
-  },
-
-  filePickerText: {
-    marginTop: 4,
-    color: COLORS.textMuted,
-    fontSize: 9,
-    fontFamily: "Inter_400Regular",
-  },
-
-  typeSelector: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-
-  typeButton: {
-    minHeight: 39,
-    justifyContent: "center",
-    paddingHorizontal: 12,
-    backgroundColor: COLORS.card,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 13,
-  },
-
-  typeButtonSelected: {
-    backgroundColor: COLORS.blueCard,
-    borderColor: "rgba(96,165,250,0.30)",
-  },
-
-  typeButtonText: {
-    color: COLORS.textSecondary,
-    fontSize: 10,
-    fontFamily: "Inter_600SemiBold",
-  },
-
-  typeButtonTextSelected: {
-    color: COLORS.blue,
-  },
-
-  validationInfo: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 9,
-    marginTop: 20,
-    padding: 12,
-    backgroundColor: "rgba(251,191,36,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(251,191,36,0.13)",
-    borderRadius: 15,
-  },
-
-  validationInfoText: {
-    flex: 1,
-    color: COLORS.textSecondary,
-    fontSize: 10,
-    lineHeight: 16,
-    fontFamily: "Inter_400Regular",
-  },
-
-  submitButton: {
-    minHeight: 54,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 9,
-    marginTop: 20,
-    marginBottom: 8,
-    backgroundColor: COLORS.burgundy,
-    borderRadius: 17,
-  },
-
-  submitButtonDisabled: {
-    opacity: 0.55,
-  },
-
-  submitButtonText: {
-    color: COLORS.text,
-    fontSize: 13,
-    fontFamily: "Inter_700Bold",
-  },
-
-  loadingContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 16,
-  },
-
-  loadingLogo: {
-    width: 64,
-    height: 64,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 22,
-  },
-
-  loadingText: {
-    color: COLORS.textSecondary,
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-  },
-
-  buttonPressed: {
-    opacity: 0.72,
-    transform: [{ scale: 0.97 }],
-  },
-});
+const styles =
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor:
+        COLORS.background,
+    },
+
+    listContent: {
+      paddingTop: 14,
+      paddingHorizontal: 16,
+    },
+
+    emptyListContent: {
+      flexGrow: 1,
+    },
+
+    loadingContainer: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+
+    loadingText: {
+      marginTop: 14,
+      color:
+        COLORS.textSecondary,
+      fontSize: 12,
+    },
+
+    header: {
+      minHeight: 50,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent:
+        "space-between",
+      marginBottom: 14,
+    },
+
+    headerSpacer: {
+      width: 46,
+      height: 46,
+    },
+
+    headerTitle: {
+      color: COLORS.text,
+      fontSize: 17,
+      fontFamily:
+        "Inter_700Bold",
+    },
+
+    headerAddButton: {
+      width: 46,
+      height: 46,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor:
+        COLORS.burgundy,
+      borderRadius: 16,
+    },
+
+    introSection: {
+      marginBottom: 18,
+    },
+
+    introEyebrow: {
+      color: COLORS.blue,
+      fontSize: 10,
+      letterSpacing: 1.5,
+      fontFamily:
+        "Inter_700Bold",
+    },
+
+    introTitle: {
+      marginTop: 6,
+      color: COLORS.text,
+      fontSize: 24,
+      fontFamily:
+        "Inter_700Bold",
+    },
+
+    introText: {
+      marginTop: 7,
+      color:
+        COLORS.textSecondary,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+
+    tabsContainer: {
+      flexDirection: "row",
+      padding: 5,
+      backgroundColor:
+        COLORS.card,
+      borderRadius: 18,
+    },
+
+    tabButton: {
+      flex: 1,
+      minHeight: 48,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 7,
+      borderRadius: 14,
+    },
+
+    tabButtonActive: {
+      backgroundColor:
+        COLORS.burgundy,
+    },
+
+    tabButtonText: {
+      color:
+        COLORS.textSecondary,
+      fontSize: 11,
+      fontFamily:
+        "Inter_600SemiBold",
+    },
+
+    tabButtonTextActive: {
+      color: COLORS.text,
+    },
+
+    filterSection: {
+      marginTop: 22,
+    },
+
+    filterEyebrow: {
+      marginBottom: 10,
+      color:
+        COLORS.textMuted,
+      fontSize: 9,
+      fontFamily:
+        "Inter_700Bold",
+    },
+
+    filters: {
+      gap: 8,
+    },
+
+    filterButton: {
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      backgroundColor:
+        COLORS.card,
+      borderRadius: 13,
+    },
+
+    filterButtonSelected: {
+      backgroundColor:
+        COLORS.blueCard,
+    },
+
+    filterButtonText: {
+      color:
+        COLORS.textSecondary,
+      fontSize: 10,
+      fontFamily:
+        "Inter_600SemiBold",
+    },
+
+    filterButtonTextSelected: {
+      color: COLORS.blue,
+    },
+
+    sectionHeader: {
+      flexDirection: "row",
+      justifyContent:
+        "space-between",
+      alignItems: "center",
+      marginTop: 26,
+      marginBottom: 14,
+    },
+
+    sectionEyebrow: {
+      color:
+        COLORS.textMuted,
+      fontSize: 9,
+      letterSpacing: 1.2,
+      fontFamily:
+        "Inter_700Bold",
+    },
+
+    sectionTitle: {
+      marginTop: 4,
+      color: COLORS.text,
+      fontSize: 20,
+      fontFamily:
+        "Inter_700Bold",
+    },
+
+    countPill: {
+      minWidth: 34,
+      height: 34,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor:
+        COLORS.card,
+      borderRadius: 17,
+    },
+
+    countText: {
+      color: COLORS.text,
+      fontSize: 11,
+      fontFamily:
+        "Inter_700Bold",
+    },
+
+    documentCard: {
+      flexDirection: "row",
+      marginBottom: 12,
+      padding: 15,
+      borderWidth: 1,
+      borderRadius: 22,
+    },
+
+    documentIcon: {
+      width: 48,
+      height: 48,
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: 16,
+    },
+
+    documentContent: {
+      flex: 1,
+      marginLeft: 13,
+    },
+
+    documentTopRow: {
+      flexDirection: "row",
+      alignItems:
+        "flex-start",
+    },
+
+    documentTitleBlock: {
+      flex: 1,
+    },
+
+    documentTitle: {
+      color: COLORS.text,
+      fontSize: 15,
+      fontFamily:
+        "Inter_700Bold",
+    },
+
+    documentType: {
+      marginTop: 4,
+      color:
+        COLORS.textSecondary,
+      fontSize: 10,
+    },
+
+    documentMetadata: {
+      marginTop: 14,
+      gap: 8,
+    },
+
+    metadataItem: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+
+    metadataText: {
+      marginLeft: 8,
+      flex: 1,
+    },
+
+    metadataLabel: {
+      color:
+        COLORS.textMuted,
+      fontSize: 8,
+      fontFamily:
+        "Inter_700Bold",
+    },
+
+    metadataValue: {
+      marginTop: 2,
+      color: COLORS.text,
+      fontSize: 10,
+    },
+
+    documentFooter: {
+      flexDirection: "row",
+      justifyContent:
+        "space-between",
+      marginTop: 13,
+      paddingTop: 10,
+      borderTopWidth: 1,
+      borderTopColor:
+        "rgba(255,255,255,0.06)",
+    },
+
+    openDocumentText: {
+      color:
+        COLORS.textSecondary,
+      fontSize: 10,
+    },
+
+    statusBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      paddingVertical: 5,
+      paddingHorizontal: 8,
+      borderWidth: 1,
+      borderRadius: 999,
+    },
+
+    statusBadgeWaiting: {
+      backgroundColor:
+        "rgba(251,191,36,0.09)",
+      borderColor:
+        "rgba(251,191,36,0.20)",
+    },
+
+    statusBadgeSuccess: {
+      backgroundColor:
+        "rgba(52,211,153,0.09)",
+      borderColor:
+        "rgba(52,211,153,0.20)",
+    },
+
+    statusBadgeDanger: {
+      backgroundColor:
+        "rgba(248,113,113,0.09)",
+      borderColor:
+        "rgba(248,113,113,0.20)",
+    },
+
+    statusBadgeNeutral: {
+      backgroundColor:
+        "rgba(255,255,255,0.05)",
+      borderColor:
+        "rgba(255,255,255,0.08)",
+    },
+
+    statusBadgeText: {
+      fontSize: 8,
+      fontFamily:
+        "Inter_700Bold",
+    },
+
+    errorBox: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginTop: 14,
+      padding: 12,
+      backgroundColor:
+        "#281719",
+      borderRadius: 15,
+    },
+
+    errorText: {
+      flex: 1,
+      marginHorizontal: 10,
+      color: "#F5A0A5",
+      fontSize: 10,
+    },
+
+    retryButton: {
+      width: 34,
+      height: 34,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+
+    emptyContainer: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 55,
+    },
+
+    emptyIconContainer: {
+      width: 72,
+      height: 72,
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: 24,
+    },
+
+    emptyTitle: {
+      marginTop: 15,
+      color: COLORS.text,
+      fontSize: 16,
+      fontFamily:
+        "Inter_700Bold",
+    },
+
+    emptyDescription: {
+      marginTop: 7,
+      maxWidth: 280,
+      color:
+        COLORS.textSecondary,
+      fontSize: 11,
+      lineHeight: 17,
+      textAlign: "center",
+    },
+
+    emptyAction: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginTop: 16,
+      paddingVertical: 10,
+      paddingHorizontal: 13,
+      backgroundColor:
+        COLORS.burgundy,
+      borderRadius: 13,
+    },
+
+    emptyActionText: {
+      color: COLORS.text,
+      fontSize: 10,
+      fontFamily:
+        "Inter_700Bold",
+    },
+
+    modalBackdrop: {
+      flex: 1,
+      justifyContent:
+        "flex-end",
+      backgroundColor:
+        "rgba(0,0,0,0.74)",
+    },
+
+    uploadModal: {
+      maxHeight: "90%",
+      padding: 18,
+      backgroundColor:
+        COLORS.backgroundElevated,
+      borderTopLeftRadius: 30,
+      borderTopRightRadius: 30,
+    },
+
+    modalHandle: {
+      alignSelf: "center",
+      width: 42,
+      height: 4,
+      marginBottom: 16,
+      backgroundColor:
+        "#555555",
+      borderRadius: 999,
+    },
+
+    modalHeader: {
+      flexDirection: "row",
+      justifyContent:
+        "space-between",
+      alignItems: "center",
+    },
+
+    modalTitle: {
+      color: COLORS.text,
+      fontSize: 22,
+      fontFamily:
+        "Inter_700Bold",
+    },
+
+    modalCloseButton: {
+      width: 40,
+      height: 40,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor:
+        COLORS.cardSoft,
+      borderRadius: 14,
+    },
+
+    inputLabel: {
+      marginTop: 18,
+      marginBottom: 8,
+      color:
+        COLORS.textMuted,
+      fontSize: 9,
+      fontFamily:
+        "Inter_700Bold",
+    },
+
+    input: {
+      minHeight: 48,
+      paddingHorizontal: 13,
+      color: COLORS.text,
+      backgroundColor:
+        COLORS.card,
+      borderRadius: 14,
+    },
+
+    optionalLabel: {
+      color: "#666666",
+    },
+
+    filePicker: {
+      flexDirection: "row",
+      alignItems: "center",
+      minHeight: 70,
+      padding: 13,
+      backgroundColor:
+        COLORS.card,
+      borderRadius: 16,
+    },
+
+    filePickerContent: {
+      flex: 1,
+      marginLeft: 12,
+    },
+
+    filePickerTitle: {
+      color: COLORS.text,
+      fontSize: 11,
+      fontFamily:
+        "Inter_700Bold",
+    },
+
+    filePickerText: {
+      marginTop: 4,
+      color:
+        COLORS.textMuted,
+      fontSize: 9,
+    },
+
+    typeSelector: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+    },
+
+    typeButton: {
+      paddingVertical: 9,
+      paddingHorizontal: 11,
+      backgroundColor:
+        COLORS.card,
+      borderRadius: 12,
+    },
+
+    typeButtonSelected: {
+      backgroundColor:
+        COLORS.blueCard,
+    },
+
+    typeButtonText: {
+      color:
+        COLORS.textSecondary,
+      fontSize: 9,
+    },
+
+    typeButtonTextSelected: {
+      color: COLORS.blue,
+    },
+
+    submitButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      minHeight: 52,
+      marginTop: 20,
+      backgroundColor:
+        COLORS.burgundy,
+      borderRadius: 16,
+    },
+
+    submitButtonDisabled: {
+      opacity: 0.55,
+    },
+
+    submitButtonText: {
+      color: COLORS.text,
+      fontSize: 12,
+      fontFamily:
+        "Inter_700Bold",
+    },
+  });

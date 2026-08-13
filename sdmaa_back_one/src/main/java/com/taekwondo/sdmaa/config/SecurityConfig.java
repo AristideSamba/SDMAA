@@ -104,6 +104,11 @@ public class SecurityConfig {
                         ).authenticated()
 
                         .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/documents/club"
+                        ).authenticated()
+
+                        .requestMatchers(
                                 "/api/me/**"
                         ).authenticated()
 
