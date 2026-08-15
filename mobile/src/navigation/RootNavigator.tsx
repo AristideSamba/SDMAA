@@ -25,6 +25,9 @@ import LoginScreen from "../screens/LoginScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
 import MesEngagementsScreen from "../screens/MesEngagementsScreen";
 import MesCommandesScreen from "../screens/MesCommandesScreen";
+import PolitiqueConfidentialiteScreen from "../screens/PolitiqueConfidentialiteScreen";
+import ConditionsUtilisationScreen from "../screens/ConditionsUtilisationScreen";
+import DemandeSuppressionCompteScreen from "../screens/DemandeSuppressionCompteScreen";
 
 import BottomTabNavigator from "./BottomTabs";
 
@@ -72,6 +75,9 @@ export type RootStackParamList = {
   ChangerMotDePasse: undefined;
   NotificationsParametres: undefined;
   Confidentialite: undefined;
+  PolitiqueConfidentialite: undefined;
+  ConditionsUtilisation: undefined;
+  DemandeSuppressionCompte: undefined;
 
   /**
    * Détail d'une activité.
@@ -218,9 +224,23 @@ export default function RootNavigator() {
           <Stack.Screen
             name="Confidentialite"
             component={
-              ConfidentialiteScreen
-            }
+              ConfidentialiteScreen}
           />
+
+          <Stack.Screen
+          name="PolitiqueConfidentialite"
+          component={PolitiqueConfidentialiteScreen}
+          />
+
+          <Stack.Screen
+            name="ConditionsUtilisation"
+            component={ConditionsUtilisationScreen}
+          />
+
+          <Stack.Screen
+  name="DemandeSuppressionCompte"
+  component={DemandeSuppressionCompteScreen}
+/>
         </>
       ) : (
         <Stack.Screen
