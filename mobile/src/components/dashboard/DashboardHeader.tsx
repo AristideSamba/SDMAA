@@ -372,7 +372,7 @@ export default function DashboardHeader({
 
         <View style={styles.beltBlock}>
           <Text style={styles.beltLabel}>
-            CEINTURE ACTUELLE
+            Ceinture actuelle
           </Text>
 
           <DashboardBeltBadge
