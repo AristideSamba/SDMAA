@@ -1,3 +1,5 @@
+// src/components/.../ActivityCard.tsx
+
 import React, {
   useCallback,
   useEffect,
@@ -21,20 +23,15 @@ import type {
   NativeStackNavigationProp,
 } from "@react-navigation/native-stack";
 
-import {
-  Ionicons,
-} from "@expo/vector-icons";
-
-import {
-  LinearGradient,
-} from "expo-linear-gradient";
-
 import type {
   RootStackParamList,
 } from "../../navigation/RootNavigator";
 
 import api from "../../services/api";
-// Adapte uniquement ces chemins selon l’emplacement réel de ActivityCard.
+
+/* -------------------------------------------------------------------------- */
+/*                                    TYPES                                   */
+/* -------------------------------------------------------------------------- */
 
 type ActivityCardNavigationProp =
   NativeStackNavigationProp<
@@ -48,18 +45,13 @@ export interface Activity {
   titre: string;
   description?: string;
 
-  /**
-   * Peut contenir :
-   * - une URL complète ;
-   * - /uploads/image.jpg ;
-   * - uploads/image.jpg ;
-   * - seulement image.jpg.
-   */
   image?: string;
 
   date?: string;
   heure?: string;
+
   lieu?: string;
+
   typeActivite?: string;
   categorie?: string;
 }
@@ -67,57 +59,84 @@ export interface Activity {
 interface ActivityCardProps {
   activity: Activity;
 
-  /**
-   * Si onPress est fourni par le parent,
-   * il reste prioritaire.
-   *
-   * Sinon, la carte ouvre automatiquement
-   * l’écran ActiviteDetails.
-   */
   onPress?: () => void;
 
   showClubLogo?: boolean;
 }
 
+/* -------------------------------------------------------------------------- */
+/*                                   COLORS                                   */
+/* -------------------------------------------------------------------------- */
+
 const COLORS = {
-  card: "#1B1B1B",
   text: "#FFFFFF",
+
   textSecondary: "#B3B3B3",
+
+  textMuted: "#7C7C7C",
+
   border: "#2F2F2F",
 };
+
+/**
+ * Couleurs opaques utilisées
+ * pour les bandes de titre.
+ */
+const TITLE_COLORS = [
+  "#315A6B", // bleu ardoise
+  "#6A3D52", // prune
+  "#4E6248", // vert sauge
+  "#735735", // brun doré
+  "#51476B", // violet
+  "#376067", // bleu pétrole
+  "#6B4440", // terracotta
+  "#4D5668", // bleu gris
+];
+
+/* -------------------------------------------------------------------------- */
+/*                              FALLBACK IMAGE                                */
+/* -------------------------------------------------------------------------- */
 
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1555597673-b21d5c935865";
 
-/**
- * Retourne l’adresse du serveur sans le suffixe /api.
- *
- * Exemple :
- * http://192.168.1.20:8080/api
- * devient :
- * http://192.168.1.20:8080
- */
+/* -------------------------------------------------------------------------- */
+/*                            SERVER BASE URL                                 */
+/* -------------------------------------------------------------------------- */
+
 function getServerBaseUrl(): string {
   const axiosBaseUrl =
     api.defaults.baseURL?.trim() ?? "";
 
   return axiosBaseUrl
-    .replace(/\/api\/?$/i, "")
-    .replace(/\/+$/, "");
+    .replace(
+      /\/api\/?$/i,
+      ""
+    )
+    .replace(
+      /\/+$/,
+      ""
+    );
 }
 
-/**
- * Transforme le chemin d’image renvoyé par Spring Boot
- * en URL exploitable par React Native.
- */
-function buildActivityImageUrl(image?: string): string {
+/* -------------------------------------------------------------------------- */
+/*                              IMAGE URL                                     */
+/* -------------------------------------------------------------------------- */
+
+function buildActivityImageUrl(
+  image?: string
+): string {
   if (!image?.trim()) {
     return FALLBACK_IMAGE;
   }
 
-  const cleanedImage = image
-    .trim()
-    .replace(/\\/g, "/");
+  const cleanedImage =
+    image
+      .trim()
+      .replace(
+        /\\/g,
+        "/"
+      );
 
   const serverBaseUrl =
     getServerBaseUrl();
@@ -127,8 +146,12 @@ function buildActivityImageUrl(image?: string): string {
   }
 
   if (
-    cleanedImage.startsWith("http://localhost:8080") ||
-    cleanedImage.startsWith("http://127.0.0.1:8080")
+    cleanedImage.startsWith(
+      "http://localhost:8080"
+    ) ||
+    cleanedImage.startsWith(
+      "http://127.0.0.1:8080"
+    )
   ) {
     return cleanedImage.replace(
       /^http:\/\/(localhost|127\.0\.0\.1):8080/i,
@@ -137,17 +160,29 @@ function buildActivityImageUrl(image?: string): string {
   }
 
   if (
-    cleanedImage.startsWith("http://") ||
-    cleanedImage.startsWith("https://")
+    cleanedImage.startsWith(
+      "http://"
+    ) ||
+    cleanedImage.startsWith(
+      "https://"
+    )
   ) {
     return cleanedImage;
   }
 
-  if (cleanedImage.startsWith("/uploads/")) {
+  if (
+    cleanedImage.startsWith(
+      "/uploads/"
+    )
+  ) {
     return `${serverBaseUrl}${cleanedImage}`;
   }
 
-  if (cleanedImage.startsWith("uploads/")) {
+  if (
+    cleanedImage.startsWith(
+      "uploads/"
+    )
+  ) {
     return `${serverBaseUrl}/${cleanedImage}`;
   }
 
@@ -156,6 +191,10 @@ function buildActivityImageUrl(image?: string): string {
     ""
   )}`;
 }
+
+/* -------------------------------------------------------------------------- */
+/*                                FORMAT DATE                                 */
+/* -------------------------------------------------------------------------- */
 
 function formatDate(
   date?: string
@@ -180,9 +219,14 @@ function formatDate(
     {
       day: "numeric",
       month: "short",
+      year: "numeric",
     }
   ).format(parsedDate);
 }
+
+/* -------------------------------------------------------------------------- */
+/*                             ACTIVITY TYPE                                  */
+/* -------------------------------------------------------------------------- */
 
 function getTypeLabel(
   activity: Activity
@@ -193,6 +237,10 @@ function getTypeLabel(
     "Activité"
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/*                              ACTIVITY ID                                   */
+/* -------------------------------------------------------------------------- */
 
 function getActivityId(
   activity: Activity
@@ -209,10 +257,14 @@ function getActivityId(
   }
 
   const numericActivityId =
-    Number(rawActivityId);
+    Number(
+      rawActivityId
+    );
 
   if (
-    !Number.isInteger(numericActivityId) ||
+    !Number.isInteger(
+      numericActivityId
+    ) ||
     numericActivityId <= 0
   ) {
     return null;
@@ -220,6 +272,55 @@ function getActivityId(
 
   return numericActivityId;
 }
+
+/* -------------------------------------------------------------------------- */
+/*                           TITLE BAND COLOR                                 */
+/* -------------------------------------------------------------------------- */
+
+function getTitleColor(
+  activity: Activity
+): string {
+  const id =
+    getActivityId(
+      activity
+    );
+
+  /**
+   * Une activité avec un id garde
+   * toujours la même couleur.
+   */
+  if (id !== null) {
+    return TITLE_COLORS[
+      id % TITLE_COLORS.length
+    ];
+  }
+
+  /**
+   * Fallback déterministe basé
+   * sur le titre.
+   */
+  const titleValue =
+    activity.titre
+      .split("")
+      .reduce(
+        (
+          total,
+          character
+        ) =>
+          total +
+          character.charCodeAt(0),
+        0
+      );
+
+  return TITLE_COLORS[
+    titleValue %
+      TITLE_COLORS.length
+  ];
+}
+
+/* -------------------------------------------------------------------------- */
+/*                               COMPONENT                                    */
+/* -------------------------------------------------------------------------- */
 
 export default function ActivityCard({
   activity,
@@ -229,25 +330,25 @@ export default function ActivityCard({
   const navigation =
     useNavigation<ActivityCardNavigationProp>();
 
-  /**
-   * L’URL est reconstruite dès que le chemin de l’image change.
-   */
+  /* ------------------------------------------------------------------------ */
+  /*                               IMAGE URL                                  */
+  /* ------------------------------------------------------------------------ */
+
   const activityImageUrl =
     useMemo(
       () =>
         buildActivityImageUrl(
           activity.image
         ),
-      [activity.image]
+      [
+        activity.image,
+      ]
     );
 
-  /**
-   * On sécurise l’identifiant avant la navigation.
-   *
-   * Le backend peut renvoyer :
-   * - id ;
-   * - ou idActivite.
-   */
+  /* ------------------------------------------------------------------------ */
+  /*                              ACTIVITY ID                                 */
+  /* ------------------------------------------------------------------------ */
+
   const activityId =
     useMemo(
       () =>
@@ -260,6 +361,27 @@ export default function ActivityCard({
       ]
     );
 
+  /* ------------------------------------------------------------------------ */
+  /*                              TITLE COLOR                                 */
+  /* ------------------------------------------------------------------------ */
+
+  const titleColor =
+    useMemo(
+      () =>
+        getTitleColor(
+          activity
+        ),
+      [
+        activity.id,
+        activity.idActivite,
+        activity.titre,
+      ]
+    );
+
+  /* ------------------------------------------------------------------------ */
+  /*                                 IMAGE                                    */
+  /* ------------------------------------------------------------------------ */
+
   const [
     imageUri,
     setImageUri,
@@ -271,26 +393,38 @@ export default function ActivityCard({
     setImageUri(
       activityImageUrl
     );
-  }, [activityImageUrl]);
+  }, [
+    activityImageUrl,
+  ]);
+
+  /* ------------------------------------------------------------------------ */
+  /*                               NAVIGATION                                 */
+  /* ------------------------------------------------------------------------ */
 
   const handlePress =
-    useCallback((): void => {
+    useCallback(() => {
       /**
-       * Si le parent fournit une action personnalisée,
-       * on l’exécute en priorité.
+       * Une action du parent
+       * reste prioritaire.
        */
       if (onPress) {
         onPress();
+
         return;
       }
 
-      if (activityId === null) {
+      if (
+        activityId === null
+      ) {
         console.error(
           "Impossible d’ouvrir les détails : identifiant d’activité invalide.",
           {
-            id: activity.id,
+            id:
+              activity.id,
+
             idActivite:
               activity.idActivite,
+
             titre:
               activity.titre,
           }
@@ -319,6 +453,10 @@ export default function ActivityCard({
     Boolean(onPress) ||
     activityId !== null;
 
+  /* ------------------------------------------------------------------------ */
+  /*                                  RENDER                                  */
+  /* ------------------------------------------------------------------------ */
+
   return (
     <Pressable
       onPress={
@@ -326,7 +464,9 @@ export default function ActivityCard({
           ? handlePress
           : undefined
       }
-      disabled={!cardIsPressable}
+      disabled={
+        !cardIsPressable
+      }
       accessibilityRole={
         cardIsPressable
           ? "button"
@@ -342,7 +482,9 @@ export default function ActivityCard({
           ? "Ouvre les détails de l’activité"
           : undefined
       }
-      style={({ pressed }) => [
+      style={({
+        pressed,
+      }) => [
         styles.container,
 
         pressed &&
@@ -350,18 +492,26 @@ export default function ActivityCard({
           styles.containerPressed,
       ]}
     >
+      {/* ---------------------------------------------------------------- */}
+      {/* IMAGE                                                            */}
+      {/* ---------------------------------------------------------------- */}
+
       <View
         style={
-          styles.imageContainer
+          styles.imageCard
         }
       >
         <Image
           source={{
             uri: imageUri,
           }}
-          style={styles.image}
+          style={
+            styles.image
+          }
           resizeMode="cover"
-          onError={(event) => {
+          onError={(
+            event
+          ) => {
             console.error(
               "Erreur de chargement de l’image de l’activité :",
               {
@@ -375,7 +525,8 @@ export default function ActivityCard({
                   imageUri,
 
                 erreur:
-                  event.nativeEvent
+                  event
+                    .nativeEvent
                     .error,
               }
             );
@@ -391,13 +542,9 @@ export default function ActivityCard({
           }}
         />
 
-        <LinearGradient
-          colors={[
-            "transparent",
-            "rgba(0,0,0,0.88)",
-          ]}
-          style={styles.overlay}
-        />
+        {/* -------------------------------------------------------------- */}
+        {/* TYPE BADGE                                                     */}
+        {/* -------------------------------------------------------------- */}
 
         <View
           style={
@@ -409,12 +556,17 @@ export default function ActivityCard({
               styles.typeBadgeText
             }
             numberOfLines={1}
+            ellipsizeMode="tail"
           >
             {getTypeLabel(
               activity
             )}
           </Text>
         </View>
+
+        {/* -------------------------------------------------------------- */}
+        {/* CLUB LOGO                                                      */}
+        {/* -------------------------------------------------------------- */}
 
         {showClubLogo ? (
           <View
@@ -426,108 +578,92 @@ export default function ActivityCard({
               source={require(
                 "../../../assets/sdmma.png"
               )}
-              style={styles.logo}
+              style={
+                styles.logo
+              }
               resizeMode="cover"
             />
           </View>
         ) : null}
 
+        {/* -------------------------------------------------------------- */}
+        {/* TITRE SUR L'IMAGE                                              */}
+        {/* -------------------------------------------------------------- */}
+
         <View
-          style={styles.imageText}
+  style={[
+    styles.titleBand,
+    {
+      backgroundColor: titleColor,
+    },
+  ]}
+>
+  <View style={styles.titleAccent} />
+
+  <Text
+    style={styles.title}
+    numberOfLines={1}
+    ellipsizeMode="tail"
+  >
+    {activity.titre}
+  </Text>
+</View>
+      </View>
+
+      {/* ---------------------------------------------------------------- */}
+      {/* DATE + LIEU                                                      */}
+      {/* ---------------------------------------------------------------- */}
+
+      <View
+        style={
+          styles.metadataContainer
+        }
+      >
+        <Text
+          style={
+            styles.dateText
+          }
+          numberOfLines={1}
         >
+          {formatDate(
+            activity.date
+          )}
+        </Text>
+
+        {activity.lieu ? (
           <Text
-            style={styles.title}
-            numberOfLines={2}
-          >
-            {activity.titre}
-          </Text>
-
-          <View
             style={
-              styles.metadataRow
+              styles.locationText
             }
+            numberOfLines={1}
+            ellipsizeMode="tail"
           >
-            <Ionicons
-              name="calendar-outline"
-              size={14}
-              color={
-                COLORS.textSecondary
-              }
-            />
-
-            <Text
-              style={
-                styles.metadata
-              }
-            >
-              {formatDate(
-                activity.date
-              )}
-            </Text>
-          </View>
-
-          {activity.lieu ? (
-            <View
-              style={
-                styles.metadataRow
-              }
-            >
-              <Ionicons
-                name="location-outline"
-                size={14}
-                color={
-                  COLORS.textSecondary
-                }
-              />
-
-              <Text
-                style={
-                  styles.metadata
-                }
-                numberOfLines={1}
-              >
-                {activity.lieu}
-              </Text>
-            </View>
-          ) : null}
-        </View>
+            {activity.lieu}
+          </Text>
+        ) : null}
       </View>
     </Pressable>
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/*                                   STYLES                                   */
+/* -------------------------------------------------------------------------- */
+
 const styles =
   StyleSheet.create({
+    /* ------------------------------------------------------------------ */
+    /* GLOBAL                                                             */
+    /* ------------------------------------------------------------------ */
+
     container: {
-      width: 240,
+      width: 220,
+
       marginRight: 14,
-
-      backgroundColor:
-        COLORS.card,
-
-      borderWidth: 1,
-      borderColor:
-        COLORS.border,
-
-      borderRadius: 24,
-
-      shadowColor:
-        "#000000",
-
-      shadowOpacity: 0.22,
-
-      shadowRadius: 12,
-
-      shadowOffset: {
-        width: 0,
-        height: 8,
-      },
-
-      elevation: 5,
     },
 
     containerPressed: {
-      opacity: 0.84,
+      opacity: 0.88,
 
       transform: [
         {
@@ -536,56 +672,67 @@ const styles =
       ],
     },
 
-    imageContainer: {
+    /* ------------------------------------------------------------------ */
+    /* IMAGE                                                              */
+    /* ------------------------------------------------------------------ */
+
+    imageCard: {
       position: "relative",
 
-      height: 200,
+      height: 165,
 
       overflow: "hidden",
 
-      borderRadius: 23,
+      backgroundColor:
+        "#2A2A2A",
+
+      borderRadius: 10,
     },
 
     image: {
       width: "100%",
+
       height: "100%",
 
       backgroundColor:
         "#2A2A2A",
     },
 
-    overlay: {
-      ...StyleSheet.absoluteFillObject,
-    },
+    /* ------------------------------------------------------------------ */
+    /* TYPE BADGE                                                         */
+    /* ------------------------------------------------------------------ */
 
     typeBadge: {
       position: "absolute",
 
-      top: 13,
-      right: 13,
+      top: 12,
+
+      right: 12,
 
       maxWidth: 125,
 
-      paddingVertical: 7,
-      paddingHorizontal: 10,
+      paddingVertical: 5,
+
+      paddingHorizontal: 9,
 
       backgroundColor:
-        "rgba(0,0,0,0.58)",
+        "#181818",
 
       borderWidth: 1,
 
       borderColor:
-        "rgba(255,255,255,0.11)",
+        "#353535",
 
       borderRadius: 999,
     },
 
     typeBadgeText: {
-      color: COLORS.text,
+      color:
+        COLORS.text,
 
-      fontSize: 9,
+      fontSize: 8,
 
-      letterSpacing: 0.8,
+      letterSpacing: 0.7,
 
       textTransform:
         "uppercase",
@@ -594,72 +741,120 @@ const styles =
         "Inter_700Bold",
     },
 
+    /* ------------------------------------------------------------------ */
+    /* LOGO                                                               */
+    /* ------------------------------------------------------------------ */
+
     logoContainer: {
       position: "absolute",
 
-      top: 13,
-      left: 13,
+      top: 12,
 
-      width: 35,
-      height: 35,
+      left: 12,
+
+      width: 34,
+
+      height: 34,
 
       alignItems: "center",
-      justifyContent: "center",
+
+      justifyContent:
+        "center",
 
       overflow: "hidden",
+
+      backgroundColor:
+        "#FFFFFF",
 
       borderWidth: 2,
 
       borderColor:
-        "rgba(255,255,255,0.65)",
+        "#FFFFFF",
 
       borderRadius: 50,
     },
 
     logo: {
       width: "100%",
+
       height: "100%",
     },
 
-    imageText: {
-      position: "absolute",
+    /* ------------------------------------------------------------------ */
+    /* TITLE BAND                                                         */
+    /* ------------------------------------------------------------------ */
 
-      right: 16,
-      bottom: 16,
-      left: 16,
+   titleBand: {
+  position: "absolute",
+
+  left: 0,
+  right: 0,
+  bottom: 8,
+
+  height: 36,
+
+  flexDirection: "row",
+  alignItems: "center",
+
+  paddingHorizontal: 10,
+},
+
+titleAccent: {
+  width: 3,
+  height: 17,
+
+  marginRight: 8,
+
+  backgroundColor: "#FFFFFF",
+
+},
+
+title: {
+  flex: 1,
+
+  color: COLORS.text,
+
+  fontSize: 13,
+  lineHeight: 17,
+
+  letterSpacing: -0.15,
+
+  fontFamily: "Inter_700Bold",
+},
+
+    /* ------------------------------------------------------------------ */
+    /* DATE + LIEU                                                        */
+    /* ------------------------------------------------------------------ */
+
+    metadataContainer: {
+      marginTop: 9,
+
+      paddingHorizontal: 2,
     },
 
-    title: {
-      color: COLORS.text,
-
-      fontSize: 20,
-      lineHeight: 25,
-
-      letterSpacing: -0.4,
-
-      fontFamily:
-        "Inter_700Bold",
-    },
-
-    metadataRow: {
-      flexDirection: "row",
-
-      alignItems: "center",
-
-      marginTop: 8,
-    },
-
-    metadata: {
-      flexShrink: 1,
-
-      marginLeft: 6,
-
+    dateText: {
       color:
         COLORS.textSecondary,
 
       fontSize: 11,
 
+      lineHeight: 15,
+
       fontFamily:
         "Inter_600SemiBold",
+    },
+
+    locationText: {
+      marginTop: 3,
+
+      color:
+        COLORS.textMuted,
+
+      fontSize: 10,
+
+      lineHeight: 14,
+
+      fontFamily:
+        "Inter_400Regular",
     },
   });

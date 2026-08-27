@@ -8,6 +8,7 @@ import React, {
 
 import {
   ActivityIndicator,
+  Image,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Pressable,
@@ -133,14 +134,14 @@ const COLORS = {
   green: "#34D399",
   amber: "#FBBF24",
 
-  engagementCard: "#172733",
-  engagementFeatured: "#20374A",
-  engagementAccent: "#60A5FA",
+  engagementCard: "#1A1A1A",
+  engagementFeatured: "#222222",
+  engagementAccent: "#A7A7A7",
 
-  announcementCard: "#29231A",
-  announcementFeatured: "#321C20",
-  announcementAccent: "#F59E0B",
 };
+
+const ANNOUNCEMENT_FALLBACK_IMAGE =
+  "https://images.unsplash.com/photo-1523240795612-9a054b0db644";
 
 const ROUTES = {
   notifications: [
@@ -410,6 +411,91 @@ function getAnnouncementDate(announcement: Annonce): string | undefined {
     announcement.dateCreation ||
     announcement.createdAt
   );
+}
+
+
+function getAnnouncementImage(
+  announcement: Annonce
+): string {
+  const image =
+    announcement.imageUrl ||
+    announcement.image;
+
+  if (!image?.trim()) {
+    return ANNOUNCEMENT_FALLBACK_IMAGE;
+  }
+
+  const cleanedImage =
+    image
+      .trim()
+      .replace(/\\/g, "/");
+
+  if (
+    cleanedImage.startsWith("http://") ||
+    cleanedImage.startsWith("https://")
+  ) {
+    return cleanedImage;
+  }
+
+  const apiBase =
+    api.defaults.baseURL
+      ?.trim()
+      .replace(/\/api\/?$/i, "")
+      .replace(/\/+$/, "") || "";
+
+  if (!apiBase) {
+    return ANNOUNCEMENT_FALLBACK_IMAGE;
+  }
+
+  if (
+    cleanedImage.startsWith("/uploads/")
+  ) {
+    return `${apiBase}${cleanedImage}`;
+  }
+
+  if (
+    cleanedImage.startsWith("uploads/")
+  ) {
+    return `${apiBase}/${cleanedImage}`;
+  }
+
+  return `${apiBase}/uploads/${cleanedImage.replace(
+    /^\/+/,
+    ""
+  )}`;
+}
+
+function formatAnnouncementDate(
+  announcement: Annonce
+): string {
+  const value =
+    getAnnouncementDate(
+      announcement
+    );
+
+  if (!value) {
+    return "";
+  }
+
+  const date =
+    new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(
+    "fr-FR",
+    {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }
+  ).format(date);
 }
 
 function countAnnouncementsThisWeek(
@@ -1295,20 +1381,28 @@ export default function DashboardScreen() {
           />
 
           {recentAnnouncements.length > 0 ? (
-            <View style={styles.announcementList}>
+            <ScrollView
+              horizontal
+              nestedScrollEnabled
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={
+                styles.announcementHorizontalList
+              }
+            >
               {recentAnnouncements.map(
-                (announcement, index) => (
+                (announcement) => (
                   <AnnouncementCard
-  key={announcement.id}
-  announcement={announcement}
-  featured={index === 0}
-  onPress={() =>
-    openAnnouncementDetails(announcement)
-  }
-/>
+                    key={announcement.id}
+                    announcement={announcement}
+                    onPress={() =>
+                      openAnnouncementDetails(
+                        announcement
+                      )
+                    }
+                  />
                 )
               )}
-            </View>
+            </ScrollView>
           ) : (
             <EmptySection
               icon="megaphone-outline"
@@ -1532,11 +1626,9 @@ function SectionHeader({
 
 function AnnouncementCard({
   announcement,
-  featured,
   onPress,
 }: {
   announcement: Annonce;
-  featured: boolean;
   onPress: () => void;
 }) {
   const content =
@@ -1544,55 +1636,92 @@ function AnnouncementCard({
     announcement.contenu ||
     "Nouvelle information du club.";
 
+  const imageUrl =
+    getAnnouncementImage(
+      announcement
+    );
+
+  const [
+    currentImage,
+    setCurrentImage,
+  ] = useState(imageUrl);
+
+  useEffect(() => {
+    setCurrentImage(
+      imageUrl
+    );
+  }, [imageUrl]);
+
   return (
     <Pressable
-    onPress={onPress}
-    accessibilityRole="button"
-    accessibilityLabel={`Voir l’annonce ${announcement.titre || ""}`}
-    style={({ pressed }) => [
-      styles.announcementCard,
-      featured &&
-        styles.announcementCardFeatured,
-      pressed && styles.pressablePressed,
-    ]}
-  >
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Voir l’annonce ${
+        announcement.titre || ""
+      }`}
+      style={({ pressed }) => [
+        styles.announcementCard,
+        pressed &&
+          styles.pressablePressed,
+      ]}
+    >
       <View
-        style={[
-          styles.announcementIcon,
-          featured &&
-            styles.announcementIconFeatured,
-        ]}
+        style={
+          styles.announcementImageContainer
+        }
       >
-        <Ionicons
-          name={
-            featured
-              ? "megaphone"
-              : "megaphone-outline"
+        <Image
+          source={{
+            uri: currentImage,
+          }}
+          style={
+            styles.announcementImage
           }
-          size={19}
-          color={
-            featured
-              ? COLORS.text
-              : COLORS.announcementAccent
-          }
+          resizeMode="cover"
+          onError={() => {
+            if (
+              currentImage !==
+              ANNOUNCEMENT_FALLBACK_IMAGE
+            ) {
+              setCurrentImage(
+                ANNOUNCEMENT_FALLBACK_IMAGE
+              );
+            }
+          }}
         />
       </View>
 
-      <View style={styles.announcementContent}>
-        <Text
-          style={styles.announcementTitle}
-          numberOfLines={1}
-        >
-          {announcement.titre || "Annonce du club"}
-        </Text>
+      <Text
+        style={
+          styles.announcementTitle
+        }
+        numberOfLines={1}
+        ellipsizeMode="tail"
+      >
+        {announcement.titre ||
+          "Annonce du club"}
+      </Text>
 
-        <Text
-          style={styles.announcementText}
-          numberOfLines={3}
-        >
-          {content}
-        </Text>
-      </View>
+      <Text
+        style={
+          styles.announcementText
+        }
+        numberOfLines={3}
+        ellipsizeMode="tail"
+      >
+        {content}
+      </Text>
+
+      <Text
+        style={
+          styles.announcementDate
+        }
+        numberOfLines={1}
+      >
+        {formatAnnouncementDate(
+          announcement
+        )}
+      </Text>
     </Pressable>
   );
 }
@@ -1771,18 +1900,18 @@ const styles = StyleSheet.create({
     padding: 14,
     backgroundColor: COLORS.engagementCard,
     borderWidth: 1,
-    borderColor: "rgba(96,165,250,0.14)",
+    borderColor: "#2A2A2A",
     borderRadius: 20,
   },
 
   engagementCardFeatured: {
     backgroundColor: COLORS.engagementFeatured,
-    borderColor: "rgba(96,165,250,0.30)",
+    borderColor: "#363636",
   },
 
   engagementCompetitionFeatured: {
-    backgroundColor: "#29253A",
-    borderColor: "rgba(251,191,36,0.28)",
+    backgroundColor: "#24211B",
+    borderColor: "rgba(251,191,36,0.20)",
   },
 
   engagementIcon: {
@@ -1791,20 +1920,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
-    backgroundColor: "rgba(96,165,250,0.12)",
+    backgroundColor: "#242424",
     borderWidth: 1,
-    borderColor: "rgba(96,165,250,0.12)",
+    borderColor: "#303030",
     borderRadius: 16,
   },
 
   engagementIconFeatured: {
-    backgroundColor: "rgba(96,165,250,0.24)",
-    borderColor: "rgba(96,165,250,0.22)",
+    backgroundColor: "#2D2D2D",
+    borderColor: "#3A3A3A",
   },
 
   engagementCompetitionIconFeatured: {
-    backgroundColor: "rgba(251,191,36,0.12)",
-    borderColor: "rgba(251,191,36,0.22)",
+    backgroundColor: "rgba(251,191,36,0.08)",
+    borderColor: "rgba(251,191,36,0.18)",
   },
 
   engagementContent: {
@@ -1858,7 +1987,7 @@ const styles = StyleSheet.create({
   metadataText: {
     flexShrink: 1,
     marginLeft: 4,
-    color: "#9FB2C2",
+    color: "#A7A7A7",
     fontSize: 9,
     fontFamily: "Inter_500Medium",
   },
@@ -1868,59 +1997,67 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
 
-  announcementList: {
+  announcementHorizontalList: {
     paddingHorizontal: 16,
+    paddingBottom: 4,
   },
 
   announcementCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 11,
-    padding: 14,
-    backgroundColor: COLORS.announcementCard,
-    borderWidth: 1,
-    borderColor: "rgba(245,158,11,0.13)",
-    borderRadius: 19,
+    width: 220,
+
+    marginRight: 14,
   },
 
-  announcementCardFeatured: {
-    backgroundColor: COLORS.announcementFeatured,
-    borderColor: "rgba(229,9,20,0.24)",
+  announcementImageContainer: {
+    width: "100%",
+    height: 165,
+
+    overflow: "hidden",
+
+    backgroundColor: "#242424",
+
+    borderRadius: 10,
   },
 
-  announcementIcon: {
-    width: 42,
-    height: 42,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-    backgroundColor: "rgba(245,158,11,0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(245,158,11,0.13)",
-    borderRadius: 14,
-  },
+  announcementImage: {
+    width: "100%",
+    height: "100%",
 
-  announcementIconFeatured: {
-    backgroundColor: "rgba(229,9,20,0.78)",
-    borderColor: "rgba(229,9,20,0.30)",
-  },
-
-  announcementContent: {
-    flex: 1,
+    backgroundColor: "#242424",
   },
 
   announcementTitle: {
+    marginTop: 10,
+
     color: COLORS.text,
+
     fontSize: 14,
+    lineHeight: 19,
+
+    letterSpacing: -0.2,
+
     fontFamily: "Inter_700Bold",
   },
 
   announcementText: {
     marginTop: 5,
-    color: "#C7BDAF",
+
+    color: COLORS.textSecondary,
+
     fontSize: 11,
     lineHeight: 17,
+
     fontFamily: "Inter_400Regular",
+  },
+
+  announcementDate: {
+    marginTop: 7,
+
+    color: COLORS.textMuted,
+
+    fontSize: 9,
+
+    fontFamily: "Inter_500Medium",
   },
 
   emptySection: {

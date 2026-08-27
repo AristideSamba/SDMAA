@@ -61,63 +61,52 @@ const COLORS = {
 /* -------------------------------------------------------------------------- */
 
 export default function ConfidentialiteScreen() {
-  const navigation = useNavigation<any>();
+  const navigation =
+    useNavigation<any>();
 
-  /**
-   * Ouvre l'application mail du téléphone.
-   */
-  const contactClub = async () => {
-    const url =
-      "mailto:contact@sdmaa.fr?subject=Demande concernant mes données personnelles";
+  /* ------------------------------------------------------------------------ */
+  /*                              CONTACT CLUB                                */
+  /* ------------------------------------------------------------------------ */
 
-    try {
-      const supported =
-        await Linking.canOpenURL(url);
+  const contactClub =
+    async () => {
+      const url =
+        "mailto:contact@sdmaa.fr?subject=Demande concernant mes données personnelles";
 
-      if (!supported) {
-        Alert.alert(
-          "Messagerie indisponible",
-          "Aucune application de messagerie n'est disponible sur cet appareil."
+      try {
+        const supported =
+          await Linking.canOpenURL(
+            url
+          );
+
+        if (!supported) {
+          Alert.alert(
+            "Messagerie indisponible",
+            "Aucune application de messagerie n'est disponible sur cet appareil."
+          );
+
+          return;
+        }
+
+        await Linking.openURL(
+          url
+        );
+      } catch (error) {
+        console.error(
+          "Erreur ouverture messagerie :",
+          error
         );
 
-        return;
+        Alert.alert(
+          "Erreur",
+          "Impossible d'ouvrir l'application de messagerie."
+        );
       }
-
-      await Linking.openURL(url);
-    } catch (error) {
-      console.error(
-        "Erreur ouverture messagerie :",
-        error
-      );
-
-      Alert.alert(
-        "Erreur",
-        "Impossible d'ouvrir l'application de messagerie."
-      );
-    }
-  };
-
-  /**
-   * La suppression réelle du compte
-   * sera branchée plus tard.
-   */
-  const handleDeleteAccount =
-    () => {
-      Alert.alert(
-        "Supprimer mon compte",
-        "La suppression automatique du compte sera disponible prochainement.",
-        [
-          {
-            text: "Annuler",
-            style: "cancel",
-          },
-          {
-            text: "Contacter le club",
-            onPress: contactClub,
-          },
-        ]
-      );
     };
+
+  /* ------------------------------------------------------------------------ */
+  /*                                  RENDER                                  */
+  /* ------------------------------------------------------------------------ */
 
   return (
     <SafeAreaView
@@ -129,11 +118,13 @@ export default function ConfidentialiteScreen() {
         animated
       />
 
-      {/* --------------------------------------------------------------- */}
-      {/* HEADER                                                          */}
-      {/* --------------------------------------------------------------- */}
+      {/* ------------------------------------------------------------------ */}
+      {/* HEADER                                                             */}
+      {/* ------------------------------------------------------------------ */}
 
-      <View style={styles.header}>
+      <View
+        style={styles.header}
+      >
         <Pressable
           onPress={() =>
             navigation.goBack()
@@ -154,19 +145,23 @@ export default function ConfidentialiteScreen() {
         </Pressable>
 
         <Text
-          style={styles.headerTitle}
+          style={
+            styles.headerTitle
+          }
         >
           Confidentialité
         </Text>
 
         <View
-          style={styles.headerSpacer}
+          style={
+            styles.headerSpacer
+          }
         />
       </View>
 
-      {/* --------------------------------------------------------------- */}
-      {/* CONTENT                                                         */}
-      {/* --------------------------------------------------------------- */}
+      {/* ------------------------------------------------------------------ */}
+      {/* CONTENT                                                            */}
+      {/* ------------------------------------------------------------------ */}
 
       <ScrollView
         showsVerticalScrollIndicator={
@@ -176,11 +171,13 @@ export default function ConfidentialiteScreen() {
           styles.content
         }
       >
-        {/* ------------------------------------------------------------- */}
-        {/* HERO                                                          */}
-        {/* ------------------------------------------------------------- */}
+        {/* ---------------------------------------------------------------- */}
+        {/* HERO                                                             */}
+        {/* ---------------------------------------------------------------- */}
 
-        <View style={styles.hero}>
+        <View
+          style={styles.hero}
+        >
           <View
             style={
               styles.heroIconContainer
@@ -194,19 +191,25 @@ export default function ConfidentialiteScreen() {
           </View>
 
           <Text
-            style={styles.heroEyebrow}
+            style={
+              styles.heroEyebrow
+            }
           >
             SÉCURITÉ & DONNÉES
           </Text>
 
           <Text
-            style={styles.heroTitle}
+            style={
+              styles.heroTitle
+            }
           >
             Vos données personnelles
           </Text>
 
           <Text
-            style={styles.heroText}
+            style={
+              styles.heroText
+            }
           >
             Consultez les informations
             liées à vos données, votre
@@ -215,7 +218,9 @@ export default function ConfidentialiteScreen() {
           </Text>
 
           <View
-            style={styles.heroBadge}
+            style={
+              styles.heroBadge
+            }
           >
             <Ionicons
               name="lock-closed-outline"
@@ -233,16 +238,18 @@ export default function ConfidentialiteScreen() {
           </View>
         </View>
 
-        {/* ------------------------------------------------------------- */}
-        {/* DOCUMENTS                                                     */}
-        {/* ------------------------------------------------------------- */}
+        {/* ---------------------------------------------------------------- */}
+        {/* DOCUMENTS                                                        */}
+        {/* ---------------------------------------------------------------- */}
 
         <SettingsGroup
           title="DOCUMENTS"
         >
           <SettingsRow
             icon="document-text-outline"
-            iconColor={COLORS.blue}
+            iconColor={
+              COLORS.blue
+            }
             iconBackground="rgba(96,165,250,0.12)"
             title="Politique de confidentialité"
             subtitle="Comment vos données sont utilisées"
@@ -257,7 +264,9 @@ export default function ConfidentialiteScreen() {
 
           <SettingsRow
             icon="reader-outline"
-            iconColor={COLORS.amber}
+            iconColor={
+              COLORS.amber
+            }
             iconBackground="rgba(251,191,36,0.11)"
             title="Conditions d’utilisation"
             subtitle="Règles d’utilisation de l’application"
@@ -269,26 +278,30 @@ export default function ConfidentialiteScreen() {
           />
         </SettingsGroup>
 
-        {/* ------------------------------------------------------------- */}
-        {/* MES DONNÉES                                                   */}
-        {/* ------------------------------------------------------------- */}
+        {/* ---------------------------------------------------------------- */}
+        {/* MES DONNÉES                                                      */}
+        {/* ---------------------------------------------------------------- */}
 
         <SettingsGroup
           title="MES DONNÉES"
         >
           <SettingsRow
             icon="mail-outline"
-            iconColor={COLORS.blue}
+            iconColor={
+              COLORS.blue
+            }
             iconBackground="rgba(96,165,250,0.10)"
             title="Contacter le club"
             subtitle="Une question concernant vos données ?"
-            onPress={contactClub}
+            onPress={
+              contactClub
+            }
           />
         </SettingsGroup>
 
-        {/* ------------------------------------------------------------- */}
-        {/* ZONE SENSIBLE                                                 */}
-        {/* ------------------------------------------------------------- */}
+        {/* ---------------------------------------------------------------- */}
+        {/* ZONE SENSIBLE                                                    */}
+        {/* ---------------------------------------------------------------- */}
 
         <SettingsGroup
           title="ZONE SENSIBLE"
@@ -296,34 +309,44 @@ export default function ConfidentialiteScreen() {
         >
           <SettingsRow
             icon="trash-outline"
-            title="Supprimer mon compte"
-            subtitle="Demander la suppression définitive du compte"
+            title="Demander la suppression"
+            subtitle="Envoyer une demande de suppression de votre compte"
             danger
-            onPress={
-              handleDeleteAccount
+            onPress={() =>
+              navigation.navigate(
+                "DemandeSuppressionCompte"
+              )
             }
           />
         </SettingsGroup>
 
-        {/* ------------------------------------------------------------- */}
-        {/* INFORMATION                                                   */}
-        {/* ------------------------------------------------------------- */}
+        {/* ---------------------------------------------------------------- */}
+        {/* INFORMATION                                                      */}
+        {/* ---------------------------------------------------------------- */}
 
         <View
-          style={styles.infoBox}
+          style={
+            styles.infoBox
+          }
         >
           <View
-            style={styles.infoIcon}
+            style={
+              styles.infoIcon
+            }
           >
             <Ionicons
               name="information-circle-outline"
               size={19}
-              color={COLORS.textSecondary}
+              color={
+                COLORS.textSecondary
+              }
             />
           </View>
 
           <Text
-            style={styles.infoText}
+            style={
+              styles.infoText
+            }
           >
             Certaines données peuvent
             devoir être conservées pour
@@ -392,11 +415,17 @@ function SettingsRow({
 }: {
   icon:
     keyof typeof Ionicons.glyphMap;
+
   title: string;
+
   subtitle: string;
+
   onPress: () => void;
+
   danger?: boolean;
+
   iconColor?: string;
+
   iconBackground?: string;
 }) {
   const resolvedIconColor =
@@ -415,7 +444,9 @@ function SettingsRow({
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={title}
+      accessibilityLabel={
+        title
+      }
       style={({ pressed }) => [
         styles.row,
         pressed &&
@@ -490,7 +521,9 @@ function SettingsRow({
 function Divider() {
   return (
     <View
-      style={styles.divider}
+      style={
+        styles.divider
+      }
     />
   );
 }
@@ -503,6 +536,7 @@ const styles =
   StyleSheet.create({
     safeArea: {
       flex: 1,
+
       backgroundColor:
         COLORS.background,
     },
@@ -513,23 +547,31 @@ const styles =
 
     header: {
       height: 64,
+
       flexDirection: "row",
+
       alignItems: "center",
+
       justifyContent:
         "space-between",
+
       paddingHorizontal: 16,
     },
 
     backButton: {
       width: 42,
       height: 42,
+
       alignItems: "center",
-      justifyContent: "center",
+
+      justifyContent:
+        "center",
 
       backgroundColor:
         COLORS.card,
 
       borderWidth: 1,
+
       borderColor:
         COLORS.border,
 
@@ -561,6 +603,7 @@ const styles =
 
     content: {
       paddingHorizontal: 16,
+
       paddingBottom: 46,
     },
 
@@ -572,6 +615,7 @@ const styles =
       alignItems: "center",
 
       paddingHorizontal: 22,
+
       paddingVertical: 26,
 
       backgroundColor:
@@ -590,7 +634,9 @@ const styles =
       height: 64,
 
       alignItems: "center",
-      justifyContent: "center",
+
+      justifyContent:
+        "center",
 
       backgroundColor:
         "rgba(96,165,250,0.11)",
@@ -606,7 +652,8 @@ const styles =
     heroEyebrow: {
       marginTop: 16,
 
-      color: COLORS.blue,
+      color:
+        COLORS.blue,
 
       fontSize: 9,
 
@@ -619,7 +666,8 @@ const styles =
     heroTitle: {
       marginTop: 7,
 
-      color: COLORS.text,
+      color:
+        COLORS.text,
 
       fontSize: 21,
 
@@ -638,8 +686,7 @@ const styles =
 
       marginTop: 9,
 
-      color:
-        "#AFC1D0",
+      color: "#AFC1D0",
 
       fontSize: 12,
 
@@ -653,6 +700,7 @@ const styles =
 
     heroBadge: {
       flexDirection: "row",
+
       alignItems: "center",
 
       gap: 6,
@@ -660,6 +708,7 @@ const styles =
       marginTop: 17,
 
       paddingHorizontal: 10,
+
       paddingVertical: 6,
 
       backgroundColor:
@@ -687,6 +736,7 @@ const styles =
 
     sectionTitle: {
       marginBottom: 10,
+
       marginLeft: 4,
 
       color:
@@ -739,6 +789,7 @@ const styles =
       alignItems: "center",
 
       paddingHorizontal: 15,
+
       paddingVertical: 12,
     },
 
@@ -752,7 +803,9 @@ const styles =
       height: 44,
 
       alignItems: "center",
-      justifyContent: "center",
+
+      justifyContent:
+        "center",
 
       borderRadius: 14,
     },
@@ -764,7 +817,8 @@ const styles =
     },
 
     rowTitle: {
-      color: COLORS.text,
+      color:
+        COLORS.text,
 
       fontSize: 14,
 
@@ -798,7 +852,9 @@ const styles =
       height: 30,
 
       alignItems: "center",
-      justifyContent: "center",
+
+      justifyContent:
+        "center",
     },
 
     /* ------------------------------------------------------------------ */
@@ -815,13 +871,14 @@ const styles =
     },
 
     /* ------------------------------------------------------------------ */
-    /* INFO BOX                                                           */
+    /* INFO                                                               */
     /* ------------------------------------------------------------------ */
 
     infoBox: {
       flexDirection: "row",
 
-      alignItems: "flex-start",
+      alignItems:
+        "flex-start",
 
       marginTop: 20,
 
@@ -843,7 +900,9 @@ const styles =
       height: 34,
 
       alignItems: "center",
-      justifyContent: "center",
+
+      justifyContent:
+        "center",
 
       backgroundColor:
         COLORS.cardSoft,

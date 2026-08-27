@@ -2214,7 +2214,7 @@ const styles = StyleSheet.create({
   promotionOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor:
-      "rgba(0,0,0,0.52)",
+      "rgba(0, 0, 0, 0.27)",
   },
 
   promotionContent: {

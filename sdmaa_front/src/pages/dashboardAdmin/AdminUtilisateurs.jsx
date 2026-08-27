@@ -11,6 +11,10 @@ import {
   CreditCard,
   CalendarDays,
   BadgeCheck,
+  UserX,
+  XCircle,
+  Clock3,
+  MessageSquareText,
 } from "lucide-react";
 
 const roles = ["TOUS", "ADHERENT", "COACH", "ADMIN"];
@@ -80,25 +84,63 @@ function StatusBadge({ statut }) {
   );
 }
 
+
+function DeletionRequestBadge({ statut }) {
+  const value = String(statut || "EN_ATTENTE")
+    .trim()
+    .toUpperCase();
+
+  const styles = {
+    EN_ATTENTE: "border-amber-100 bg-amber-50 text-amber-700",
+    TRAITEE: "border-green-100 bg-green-50 text-green-700",
+    REFUSEE: "border-red-100 bg-red-50 text-red-700",
+  };
+
+  const labels = {
+    EN_ATTENTE: "En attente",
+    TRAITEE: "Traitée",
+    REFUSEE: "Refusée",
+  };
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${
+        styles[value] || "border-gray-100 bg-gray-50 text-gray-700"
+      }`}
+    >
+      {labels[value] || value}
+    </span>
+  );
+}
+
 function AdminUtilisateurs() {
   const navigate = useNavigate();
 
   const [users, setUsers] = useState([]);
   const [adhesions, setAdhesions] = useState([]);
+  const [deletionRequests, setDeletionRequests] = useState([]);
 
   const [search, setSearch] = useState("");
   const [adhesionSearch, setAdhesionSearch] = useState("");
+  const [deletionSearch, setDeletionSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("TOUS");
+  const [deletionStatusFilter, setDeletionStatusFilter] = useState("TOUS");
 
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null);
   const [validatingAdhesionId, setValidatingAdhesionId] = useState(null);
+  const [processingDeletionId, setProcessingDeletionId] = useState(null);
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
   const [userToSuspend, setUserToSuspend] = useState(null);
   const [showSuspendModal, setShowSuspendModal] = useState(false);
+
+  const [deletionRequestToProcess, setDeletionRequestToProcess] = useState(null);
+  const [deletionAction, setDeletionAction] = useState(null);
+  const [deletionComment, setDeletionComment] = useState("");
+  const [showDeletionModal, setShowDeletionModal] = useState(false);
 
   const apiFetch = async (url, options = {}) => {
     const res = await fetch(url, {
@@ -146,17 +188,41 @@ function AdminUtilisateurs() {
     return data || [];
   };
 
+
+  const fetchDeletionRequests = async () => {
+    const res = await apiFetch(`${API_URL}/demandes-suppression`);
+
+    if (!res) return [];
+
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      throw new Error(
+        data?.message ||
+          "Impossible de charger les demandes de suppression."
+      );
+    }
+
+    return data || [];
+  };
+
   const loadData = async () => {
     try {
       setError("");
 
-      const [usersData, adhesionsData] = await Promise.all([
+      const [
+        usersData,
+        adhesionsData,
+        deletionRequestsData,
+      ] = await Promise.all([
         fetchUsers(),
         fetchAdhesions(),
+        fetchDeletionRequests(),
       ]);
 
       setUsers(usersData);
       setAdhesions(adhesionsData);
+      setDeletionRequests(deletionRequestsData);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -209,6 +275,35 @@ function AdminUtilisateurs() {
       return !q || text.includes(q);
     });
   }, [adhesions, adhesionSearch]);
+
+
+  const filteredDeletionRequests = useMemo(() => {
+    const q = deletionSearch.trim().toLowerCase();
+
+    return deletionRequests.filter((request) => {
+      const statut = String(request.statut || "EN_ATTENTE")
+        .trim()
+        .toUpperCase();
+
+      const content = `
+        ${request.utilisateurNom || ""}
+        ${request.utilisateurEmail || ""}
+        ${request.motif || ""}
+        ${request.commentaireAdmin || ""}
+        ${statut}
+      `.toLowerCase();
+
+      return (
+        (!q || content.includes(q)) &&
+        (deletionStatusFilter === "TOUS" ||
+          statut === deletionStatusFilter)
+      );
+    });
+  }, [
+    deletionRequests,
+    deletionSearch,
+    deletionStatusFilter,
+  ]);
 
   const changeRole = async (id, newRole) => {
     setUpdatingId(id);
@@ -305,6 +400,101 @@ function AdminUtilisateurs() {
       setError(err.message);
     } finally {
       setValidatingAdhesionId(null);
+    }
+  };
+
+
+  const openDeletionModal = (request, action) => {
+    setDeletionRequestToProcess(request);
+    setDeletionAction(action);
+    setDeletionComment("");
+    setShowDeletionModal(true);
+  };
+
+  const closeDeletionModal = () => {
+    if (processingDeletionId) return;
+
+    setShowDeletionModal(false);
+    setDeletionRequestToProcess(null);
+    setDeletionAction(null);
+    setDeletionComment("");
+  };
+
+  const processDeletionRequest = async () => {
+    if (!deletionRequestToProcess || !deletionAction) {
+      return;
+    }
+
+    const id = deletionRequestToProcess.id;
+
+    setProcessingDeletionId(id);
+    setError("");
+    setSuccess("");
+
+    try {
+      const endpoint =
+        deletionAction === "TRAITER"
+          ? "traiter"
+          : "refuser";
+
+      const params = new URLSearchParams();
+
+      if (deletionComment.trim()) {
+        params.set(
+          "commentaireAdmin",
+          deletionComment.trim()
+        );
+      }
+
+      const query = params.toString();
+
+      const res = await apiFetch(
+        `${API_URL}/demandes-suppression/${id}/${endpoint}${
+          query ? `?${query}` : ""
+        }`,
+        {
+          method: "PUT",
+        }
+      );
+
+      const data = await res?.json().catch(() => null);
+
+      if (!res?.ok) {
+        throw new Error(
+          data?.message ||
+            data?.error ||
+            "Impossible de traiter la demande."
+        );
+      }
+
+      setDeletionRequests((prev) =>
+        prev.map((request) =>
+          request.id === id
+            ? {
+                ...request,
+                ...(data || {}),
+              }
+            : request
+        )
+      );
+
+      setSuccess(
+        deletionAction === "TRAITER"
+          ? "La demande de suppression a été marquée comme traitée."
+          : "La demande de suppression a été refusée."
+      );
+
+      setShowDeletionModal(false);
+      setDeletionRequestToProcess(null);
+      setDeletionAction(null);
+      setDeletionComment("");
+    } catch (err) {
+      setError(
+        err?.message ||
+          "Impossible de traiter la demande."
+      );
+    } finally {
+      setProcessingDeletionId(null);
     }
   };
 
@@ -619,6 +809,374 @@ function AdminUtilisateurs() {
           )}
         </section>
       </section>
+
+
+      {/* ---------------------------------------------------------------- */}
+      {/* DEMANDES DE SUPPRESSION                                          */}
+      {/* ---------------------------------------------------------------- */}
+
+      <section className="space-y-5">
+        <div className="rounded-[28px] border border-red-100 bg-white px-6 py-7 shadow-[0_16px_50px_rgba(0,0,0,0.06)]">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-red-400">
+                Comptes
+              </p>
+
+              <h2 className="mt-3 text-2xl font-semibold tracking-tight text-gray-950">
+                Demandes de suppression
+              </h2>
+
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-500">
+                Consultez les demandes envoyées depuis l’application mobile.
+                Le traitement d’une demande ne supprime pas automatiquement le
+                compte : il enregistre uniquement la décision de
+                l’administration.
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+              {
+                deletionRequests.filter(
+                  (request) =>
+                    String(request.statut || "EN_ATTENTE")
+                      .trim()
+                      .toUpperCase() === "EN_ATTENTE"
+                ).length
+              }{" "}
+              en attente
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-black/5 bg-white/80 p-5 shadow-[0_10px_35px_rgba(0,0,0,0.06)]">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="relative w-full max-w-xl">
+              <Search
+                size={18}
+                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+              />
+
+              <input
+                value={deletionSearch}
+                onChange={(e) =>
+                  setDeletionSearch(e.target.value)
+                }
+                placeholder="Rechercher une demande..."
+                className="w-full rounded-3xl border border-black/10 bg-white px-11 py-3 text-sm outline-none focus:ring-2 focus:ring-gray-950/10"
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {[
+                ["TOUS", "Toutes"],
+                ["EN_ATTENTE", "En attente"],
+                ["TRAITEE", "Traitées"],
+                ["REFUSEE", "Refusées"],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() =>
+                    setDeletionStatusFilter(value)
+                  }
+                  className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+                    deletionStatusFilter === value
+                      ? "bg-gray-950 text-white"
+                      : "border border-black/10 bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <section className="rounded-3xl border border-black/5 bg-white/80 p-6 shadow-[0_10px_35px_rgba(0,0,0,0.06)]">
+          {filteredDeletionRequests.length > 0 ? (
+            <div className="grid gap-4">
+              {[...filteredDeletionRequests]
+                .sort(
+                  (a, b) =>
+                    new Date(b.dateDemande || 0).getTime() -
+                    new Date(a.dateDemande || 0).getTime()
+                )
+                .map((request) => {
+                  const statutNormalise = String(
+                    request.statut || "EN_ATTENTE"
+                  )
+                    .trim()
+                    .toUpperCase();
+
+                  const isPending =
+                    statutNormalise === "EN_ATTENTE";
+
+                  return (
+                    <article
+                      key={request.id}
+                      className="rounded-3xl border border-black/5 bg-white p-5 shadow-[0_6px_20px_rgba(0,0,0,0.04)]"
+                    >
+                      <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                        <div className="flex min-w-0 flex-1 items-start gap-4">
+                          <div className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-50 text-red-600">
+                            <UserX size={21} />
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="text-base font-semibold text-gray-950">
+                                {request.utilisateurNom || "Utilisateur"}
+                              </h3>
+
+                              <DeletionRequestBadge
+                                statut={statutNormalise}
+                              />
+                            </div>
+
+                            <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2 text-sm text-gray-500">
+                              <span className="inline-flex items-center gap-1.5">
+                                <Mail size={14} />
+                                {request.utilisateurEmail ||
+                                  "Email non renseigné"}
+                              </span>
+
+                              <span className="inline-flex items-center gap-1.5">
+                                <CalendarDays size={14} />
+                                {formatDate(request.dateDemande)}
+                              </span>
+                            </div>
+
+                            <div className="mt-4 rounded-2xl bg-gray-50 p-4">
+                              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">
+                                Motif
+                              </p>
+
+                              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-gray-700">
+                                {request.motif ||
+                                  "Aucun motif renseigné par l’utilisateur."}
+                              </p>
+                            </div>
+
+                            {request.commentaireAdmin && (
+                              <div className="mt-3 rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                                <div className="flex items-center gap-2 text-blue-700">
+                                  <MessageSquareText size={15} />
+
+                                  <p className="text-xs font-semibold uppercase tracking-[0.14em]">
+                                    Réponse du club
+                                  </p>
+                                </div>
+
+                                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-blue-900">
+                                  {request.commentaireAdmin}
+                                </p>
+                              </div>
+                            )}
+
+                            {request.dateTraitement && (
+                              <p className="mt-3 text-xs text-gray-400">
+                                Traitée le{" "}
+                                {formatDate(request.dateTraitement)}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex shrink-0 flex-wrap items-center gap-2">
+                          {isPending ? (
+                            <>
+                              <button
+                                type="button"
+                                disabled={
+                                  processingDeletionId === request.id
+                                }
+                                onClick={() =>
+                                  openDeletionModal(
+                                    request,
+                                    "REFUSER"
+                                  )
+                                }
+                                className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-red-100 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                <XCircle size={16} />
+                                Refuser
+                              </button>
+
+                              <button
+                                type="button"
+                                disabled={
+                                  processingDeletionId === request.id
+                                }
+                                onClick={() =>
+                                  openDeletionModal(
+                                    request,
+                                    "TRAITER"
+                                  )
+                                }
+                                className="inline-flex cursor-pointer items-center gap-2 rounded-2xl bg-gray-950 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                <CheckCircle2 size={16} />
+                                Traiter
+                              </button>
+                            </>
+                          ) : (
+                            <div
+                              className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium ${
+                                statutNormalise === "TRAITEE"
+                                  ? "bg-green-50 text-green-700"
+                                  : "bg-red-50 text-red-700"
+                              }`}
+                            >
+                              {statutNormalise === "TRAITEE" ? (
+                                <CheckCircle2 size={16} />
+                              ) : (
+                                <XCircle size={16} />
+                              )}
+
+                              {statutNormalise === "TRAITEE"
+                                ? "Demande traitée"
+                                : "Demande refusée"}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+            </div>
+          ) : (
+            <div className="rounded-3xl border border-dashed border-black/10 bg-gray-50 px-6 py-12 text-center">
+              <UserX
+                size={28}
+                className="mx-auto text-gray-300"
+              />
+
+              <p className="mt-3 text-sm font-medium text-gray-700">
+                Aucune demande de suppression
+              </p>
+
+              <p className="mt-1 text-sm text-gray-400">
+                Les demandes envoyées depuis l’application apparaîtront ici.
+              </p>
+            </div>
+          )}
+        </section>
+      </section>
+
+      {showDeletionModal && deletionRequestToProcess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-[28px] bg-white p-6 shadow-2xl">
+            <div className="flex items-start gap-4">
+              <div
+                className={`inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${
+                  deletionAction === "TRAITER"
+                    ? "bg-green-50 text-green-700"
+                    : "bg-red-50 text-red-700"
+                }`}
+              >
+                {deletionAction === "TRAITER" ? (
+                  <CheckCircle2 size={21} />
+                ) : (
+                  <XCircle size={21} />
+                )}
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
+                  Demande de suppression
+                </p>
+
+                <h2 className="mt-2 text-xl font-semibold text-gray-950">
+                  {deletionAction === "TRAITER"
+                    ? "Marquer comme traitée"
+                    : "Refuser la demande"}
+                </h2>
+
+                <p className="mt-2 text-sm leading-6 text-gray-500">
+                  {deletionRequestToProcess.utilisateurNom ||
+                    "Utilisateur"}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <label
+                htmlFor="deletion-comment"
+                className="text-sm font-medium text-gray-800"
+              >
+                Commentaire pour l’utilisateur{" "}
+                <span className="font-normal text-gray-400">
+                  (optionnel)
+                </span>
+              </label>
+
+              <textarea
+                id="deletion-comment"
+                value={deletionComment}
+                maxLength={1000}
+                onChange={(e) =>
+                  setDeletionComment(e.target.value)
+                }
+                rows={5}
+                placeholder={
+                  deletionAction === "TRAITER"
+                    ? "Ex. Votre demande a été prise en compte..."
+                    : "Ex. Votre demande ne peut pas être traitée actuellement..."
+                }
+                className="mt-3 w-full resize-none rounded-2xl border border-black/10 bg-gray-50 px-4 py-3 text-sm leading-6 text-gray-900 outline-none transition focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-950/5"
+              />
+
+              <p className="mt-2 text-right text-xs text-gray-400">
+                {deletionComment.length}/1000
+              </p>
+            </div>
+
+            <div className="mt-6 rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-amber-800">
+              Cette action met uniquement à jour le statut de la demande.
+              Elle ne supprime pas automatiquement le compte ni les données
+              de l’utilisateur.
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={closeDeletionModal}
+                disabled={Boolean(processingDeletionId)}
+                className="cursor-pointer rounded-2xl border border-black/10 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Annuler
+              </button>
+
+              <button
+                type="button"
+                onClick={processDeletionRequest}
+                disabled={Boolean(processingDeletionId)}
+                className={`inline-flex cursor-pointer items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                  deletionAction === "TRAITER"
+                    ? "bg-gray-950 hover:bg-black"
+                    : "bg-red-600 hover:bg-red-700"
+                }`}
+              >
+                {processingDeletionId ? (
+                  <Clock3
+                    size={16}
+                    className="animate-spin"
+                  />
+                ) : deletionAction === "TRAITER" ? (
+                  <CheckCircle2 size={16} />
+                ) : (
+                  <XCircle size={16} />
+                )}
+
+                {deletionAction === "TRAITER"
+                  ? "Confirmer le traitement"
+                  : "Confirmer le refus"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showSuspendModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">

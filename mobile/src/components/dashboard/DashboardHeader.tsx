@@ -54,7 +54,7 @@ const COLORS = {
   textMuted: "#7A7A7A",
   border: "#2F2F2F",
   red: "#E50914",
-  weekBlue: "#182633",
+  weekBlue: "#021a31",
   weekBlueAccent: "#60A5FA",
 };
 
@@ -372,7 +372,7 @@ export default function DashboardHeader({
 
         <View style={styles.beltBlock}>
           <Text style={styles.beltLabel}>
-            Ceinture actuelle
+            CEINTURE ACTUELLE
           </Text>
 
           <DashboardBeltBadge
@@ -612,7 +612,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     padding: 22,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
+    borderColor: "rgba(255, 255, 255, 0.16)",
     borderRadius: 30,
   },
 
@@ -804,7 +804,7 @@ const styles = StyleSheet.create({
     padding: 18,
     backgroundColor: COLORS.weekBlue,
     borderWidth: 1,
-    borderColor: "rgba(96,165,250,0.18)",
+    borderColor: "rgba(96, 165, 250, 0.29)",
     borderRadius: 24,
   },
 
